@@ -1,0 +1,14 @@
+import sys
+from .base import BaseTracker
+
+def get_tracker() -> BaseTracker:
+    if sys.platform == "darwin":
+        from .mac import MacTracker
+        return MacTracker()
+    else:
+        # Cross-platform fallback: Dummy Tracker so the daemon runs without crashing on other OSes.
+        # In a real setup, we would implement WindowsTracker/LinuxTracker classes here.
+        class DummyTracker(BaseTracker):
+            def get_active_window(self):
+                return "UnsupportedOS", f"Platform {sys.platform} not supported yet"
+        return DummyTracker()
