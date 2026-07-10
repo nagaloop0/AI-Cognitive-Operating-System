@@ -1,5 +1,4 @@
 import Quartz
-from AppKit import NSWorkspace
 from typing import Optional, Tuple
 from .base import BaseTracker
 
@@ -22,37 +21,31 @@ class MacTracker(BaseTracker):
 
     def get_active_window(self) -> Optional[Tuple[str, str]]:
         try:
-            workspace = NSWorkspace.sharedWorkspace()
-            active_app = workspace.frontmostApplication()
-            if not active_app:
-                return None
-            
-            app_name = active_app.localizedName() or ""
-            pid = active_app.processIdentifier()
-            
-            # Query Quartz for the window name
+            # Query Quartz directly for the onscreen window list in Z-order (front-to-back)
             options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
             window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID)
             
-            window_title = ""
-            if window_list:
-                for window in window_list:
-                    # Filter by PID of frontmost application
-                    if window.get(Quartz.kCGWindowOwnerPID) == pid:
-                        # kCGWindowLayer == 0 represents normal application windows
-                        if window.get(Quartz.kCGWindowLayer, 0) == 0:
-                            # Fallback if kCGWindowName is missing (due to permissions)
-                            window_title = window.get(Quartz.kCGWindowName, "")
-                            # If we find a valid window name, we take it
-                            if window_title:
-                                break
+            if not window_list:
+                return None
+                
+            for window in window_list:
+                # kCGWindowLayer == 0 is the layer for normal application windows
+                # We ignore menu bars (layer 24), background items, and dropdowns
+                layer = window.get(Quartz.kCGWindowLayer, 0)
+                if layer == 0:
+                    # Ignore tiny utility windows or empty overlays (height & width must be > 100)
+                    bounds = window.get(Quartz.kCGWindowBounds, {})
+                    if bounds.get('Height', 0) > 100 and bounds.get('Width', 0) > 100:
+                        app_name = window.get(Quartz.kCGWindowOwnerName, "")
+                        window_title = window.get(Quartz.kCGWindowName, "")
+                        
+                        # Filter out system UI elements that might report as layer 0
+                        if app_name in ["Window Server", "Dock", "Finder"] and not window_title:
+                            continue
                             
-            # If we successfully got the app name, but window title is empty and permission is missing, alert
-            if not window_title and not Quartz.CGPreflightScreenCaptureAccess():
-                # Return empty string but warn in console
-                pass
-
-            return app_name, window_title
+                        return app_name, window_title
+            
+            return None
         except Exception as e:
             # Silent fallback to prevent daemon crashes
             return None
