@@ -8,6 +8,7 @@ class MacTracker(BaseTracker):
 
     def _check_permissions(self) -> bool:
         try:
+            # TODO: Move this permission bootstrap logic out to the application packaging/installation step.
             # Preflight check. If not authorized, request permission (triggers macOS prompt)
             if not Quartz.CGPreflightScreenCaptureAccess():
                 print("\n[WARNING] macOS Screen Recording Permission is missing!")
@@ -33,7 +34,9 @@ class MacTracker(BaseTracker):
                 # We ignore menu bars (layer 24), background items, and dropdowns
                 layer = window.get(Quartz.kCGWindowLayer, 0)
                 if layer == 0:
-                    # Ignore tiny utility windows or empty overlays (height & width must be > 100)
+                    # Size heuristic: We check if the window width & height is larger than 100px.
+                    # This is necessary because macOS apps often create tiny, invisible helper windows
+                    # (like autocomplete boxes, background workers, 1x1 overlays) that we must ignore.
                     bounds = window.get(Quartz.kCGWindowBounds, {})
                     if bounds.get('Height', 0) > 100 and bounds.get('Width', 0) > 100:
                         app_name = window.get(Quartz.kCGWindowOwnerName, "")
