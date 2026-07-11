@@ -1,5 +1,4 @@
 import Quartz
-from typing import Optional, Tuple
 from .base import BaseTracker
 
 class MacTracker(BaseTracker):
@@ -20,7 +19,7 @@ class MacTracker(BaseTracker):
             # Fallback for older macOS versions that don't support preflight checks
             return True
 
-    def get_active_window(self) -> Optional[Tuple[str, str]]:
+    def get_active_window(self) -> tuple[str, str] | None:
         try:
             # Query Quartz directly for the onscreen window list in Z-order (front-to-back)
             options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
