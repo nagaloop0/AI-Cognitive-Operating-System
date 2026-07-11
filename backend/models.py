@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -21,3 +21,34 @@ class AppActivity(Base):
     
     # We could calculate duration dynamically, but storing it helps with fast analytics
     duration_seconds = Column(Integer, default=0)
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preference"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True) # e.g., "idle_timeout_seconds", "min_confidence"
+    value = Column(String) # Stored as string, casted dynamically in backend
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class HabitPattern(Base):
+    __tablename__ = "habit_pattern"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # The sequence of apps leading to prediction, e.g. "Jira -> VS Code"
+    trigger_sequence = Column(String, index=True) 
+    predicted_action = Column(String) # e.g. "Terminal"
+    occurrence_count = Column(Integer, default=0)
+    confidence = Column(Float, default=0.0) # Probability between 0.0 and 1.0
+    last_triggered = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AIPrediction(Base):
+    __tablename__ = "ai_prediction"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    trigger_sequence = Column(String)
+    suggested_action = Column(String)
+    status = Column(String) # "accepted", "ignored", "dismissed" (this forms the AI feedback loop)

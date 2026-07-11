@@ -9,6 +9,11 @@ This project serves as a foundational layer toward behavioral Brain-Computer Int
 2. **Zero Screen Capture:** The system only asks the OS for the active window's metadata.
 3. **Local First:** All behavioral data is stored locally in an SQLite database at `~/.cognitive_os/activity.db`.
 
+## Activity Tracking & Use Cases
+We track keystroke and mouse click **counts** (never content) to unlock key metrics:
+* **Presence & Idle Detection:** Differentiates between when an app is open in the background (0 key/mouse inputs) vs when you are actively typing/clicking. If inactive, the session is marked as "Idle" after a timeout.
+* **Context Mapping:** Distinguishes passive consumption (reading/watching tutorials: low keystrokes, high mouse activity) from active generation (coding/writing docs: high keystrokes, low mouse activity).
+
 ## Tech Stack
 * **Backend Tracker:** Python (AppKit, pynput)
 * **Database:** SQLite (SQLAlchemy ORM)
