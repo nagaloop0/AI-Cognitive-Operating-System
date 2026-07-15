@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
+# from sqlalchemy.orm import sessionmaker
 
 # Ensure the database is completely local and stored in the user's home directory
 HOME_DIR = os.path.expanduser("~")

@@ -3,6 +3,7 @@ from .base import BaseTracker
 
 def get_tracker() -> BaseTracker:
     if sys.platform == "darwin":
+        # TODO : Need to update here for the cross and move the to the config platform instead of hard coding here.
         from .mac import MacTracker
         return MacTracker()
     else:
