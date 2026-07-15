@@ -1,19 +1,24 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-# from sqlalchemy.orm import sessionmaker
 
-# Ensure the database is completely local and stored in the user's home directory
-HOME_DIR = os.path.expanduser("~")
-DB_DIR = os.path.join(HOME_DIR, ".cognitive_os")
-os.makedirs(DB_DIR, exist_ok=True)
+# Load variables from .env file
+load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DB_DIR, 'activity.db')}"
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "cognitive_os")
 
-# connect_args={"check_same_thread": False} is needed for SQLite in FastAPI
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# Construct connection URL dynamically
+if DB_PASSWORD:
+    x = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
