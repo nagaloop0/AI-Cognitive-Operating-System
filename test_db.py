@@ -4,8 +4,8 @@ from backend.models import AppActivity
 from datetime import datetime, timezone
 
 def test_database():
-    print("1. Creating database tables in ~/.cognitive_os/activity.db ...")
-    # This will create the .db file and tables if they don't exist
+    print("1. Creating database tables in PostgreSQL...")
+    # This will create the tables if they don't exist
     Base.metadata.create_all(bind=engine)
     
     print("2. Inserting a test record...")
