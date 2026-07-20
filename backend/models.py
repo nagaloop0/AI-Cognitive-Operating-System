@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from .database import Base
 
 class AppActivity(Base):
+    # TODO : Might be moved to xml format for definging the models up here ..
     __tablename__ = "app_activity"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -7,7 +7,13 @@ This project serves as a foundational layer toward behavioral Brain-Computer Int
 ## Core Principles (Absolute Privacy)
 1. **Zero Content Logging:** The system only counts keystrokes and mouse clicks. It *never* logs actual characters typed.
 2. **Zero Screen Capture:** The system only asks the OS for the active window's metadata.
-3. **Local First:** All behavioral data is stored locally in an SQLite database at `~/.cognitive_os/activity.db`.
+3. **Local First:** All behavioral data is stored locally in a PostgreSQL database (`cognitive_os`).
+
+## macOS Permissions Required
+To enable global window tracking and privacy-safe input counts on macOS:
+1. **Screen Recording:** Required by Quartz to read active window titles. (System Settings -> Privacy & Security -> Screen & System Audio Recording -> Terminal / IDE -> ON).
+2. **Accessibility:** Required by `pynput` to listen for global keypress and mouse click counts. (System Settings -> Privacy & Security -> Accessibility -> Terminal / IDE -> ON).
+*Note: If you recreate your virtual environment or change Python binaries, macOS security invalidates the executable signature and you must toggle Accessibility off and on again.*
 
 ## Activity Tracking & Use Cases
 We track keystroke and mouse click **counts** (never content) to unlock key metrics:
@@ -15,8 +21,8 @@ We track keystroke and mouse click **counts** (never content) to unlock key metr
 * **Context Mapping:** Distinguishes passive consumption (reading/watching tutorials: low keystrokes, high mouse activity) from active generation (coding/writing docs: high keystrokes, low mouse activity).
 
 ## Tech Stack
-* **Backend Tracker:** Python (AppKit, pynput)
-* **Database:** SQLite (SQLAlchemy ORM)
+* **Backend Tracker:** Python (AppKit, Quartz, pynput)
+* **Database:** PostgreSQL (SQLAlchemy ORM)
 * **API:** FastAPI
 * **Dashboard:** Vue 3
 

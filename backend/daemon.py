@@ -35,8 +35,7 @@ def run_daemon():
             keys, clicks = input_tracker.get_and_reset_counts()
             
             db: Session = SessionLocal()
-            # Convert UTC datetime to offset-naive so it can be safely compared with SQLite datetime columns
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            now = datetime.now(timezone.utc)
             
             try:
                 # Presence detection: check if there was any activity in this tick
@@ -59,7 +58,8 @@ def run_daemon():
                         activity = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
                         if activity and not activity.end_time:
                             activity.end_time = now
-                            activity.duration_seconds = int((now - activity.start_time).total_seconds())
+                            start_dt = activity.start_time.replace(tzinfo=timezone.utc) if activity.start_time.tzinfo is None else activity.start_time
+                            activity.duration_seconds = int((now - start_dt).total_seconds())
                             db.commit()
                             current_activity_id = None
                 
@@ -77,7 +77,8 @@ def run_daemon():
                         # Close the old record if it exists
                         if active_record:
                             active_record.end_time = now
-                            active_record.duration_seconds = int((now - active_record.start_time).total_seconds())
+                            start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
+                            active_record.duration_seconds = int((now - start_dt).total_seconds())
                             db.commit()
                         
                         # Open a new activity record
@@ -92,13 +93,17 @@ def run_daemon():
                         db.commit()
                         db.refresh(new_record)
                         current_activity_id = new_record.id
-                        print(f"[DAEMON] Active Window: {app_name} | Title: {window_title}")
+                        print(f"[DAEMON] Active Window: {app_name} | Title: {window_title} | Keys: {keys} | Clicks: {clicks}")
                     
                     # Case B: Still in the same window, accumulate data
                     else:
                         active_record.keystroke_count += keys
                         active_record.mouse_click_count += clicks
-                        active_record.duration_seconds = int((now - active_record.start_time).total_seconds())
+                        if keys > 0 or clicks > 0:
+                            # what are we printing the keys are we storing them all here ..?
+                            print(f"[DAEMON] Activity in {app_name} | +{keys} keys | +{clicks} clicks (Total: {active_record.keystroke_count} keys, {active_record.mouse_click_count} clicks)")
+                        start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
+                        active_record.duration_seconds = int((now - start_dt).total_seconds())
                         db.commit()
                 
                 # If window detection fails (e.g., lock screen, screensaver), close the current active record
@@ -106,7 +111,8 @@ def run_daemon():
                     active_record = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
                     if active_record:
                         active_record.end_time = now
-                        active_record.duration_seconds = int((now - active_record.start_time).total_seconds())
+                        start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
+                        active_record.duration_seconds = int((now - start_dt).total_seconds())
                         db.commit()
                         current_activity_id = None
             
