@@ -49,5 +49,5 @@ class MacTracker(BaseTracker):
             
             return None
         except Exception as e:
-            # Silent fallback to prevent daemon crashes
+            # Silent fallback to prevent driver crashes
             return None

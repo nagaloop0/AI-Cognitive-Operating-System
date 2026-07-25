@@ -8,7 +8,8 @@ This list contains high-level ideas, future expansions, and configuration ideas 
 - [ ] **Mobile Applications:**
   - Build Android app (APK) for mobile usage tracking.
   - Port to Apple App Store (iOS Screen Time / focus tracking).
-- [ ] **Desktop Wrapper:** Pack the python daemon and Vue 3 dashboard into a unified application (e.g., using Electron or Tauri).
+- [ ] **Desktop Wrapper:** Pack the python driver and Vue 3 dashboard into a unified application (e.g., using Electron or Tauri).
+- [ ] **Unified Process Manager:** Create a single master launcher script to run `driver.py` (tracker daemon) and `server.py` (FastAPI backend) in parallel without needing two separate terminal windows.
 
 ## Core Enhancements & Preferences
 - [ ] **Settings Dashboard Panel:** Allow users to set focus preferences, tracking schedules, and notification settings directly in the Vue UI.

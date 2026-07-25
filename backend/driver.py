@@ -12,8 +12,8 @@ Base.metadata.create_all(bind=engine)
 POLL_INTERVAL = 2          # Check window state every 2 seconds
 IDLE_TIMEOUT_POLLS = 10     # 20 seconds of no key/mouse input = idle (shortened for easy testing)
 
-def run_daemon():
-    print("Starting AI Cognitive OS Daemon...")
+def run_driver():
+    print("Starting AI Cognitive OS Driver...")
     print("Local database is connected.")
     
     # Initialize trackers
@@ -38,6 +38,21 @@ def run_daemon():
             now = datetime.now(timezone.utc)
             
             try:
+                # Check if user has paused tracking via API / Preference
+                pref = db.query(UserPreference).filter(UserPreference.key == "is_tracking_paused").first()
+                if pref and pref.value == "true":
+                    if current_activity_id:
+                        # Close active session
+                        active_record = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
+                        if active_record:
+                            active_record.end_time = now
+                            start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
+                            active_record.duration_seconds = int((now - start_dt).total_seconds())
+                            db.commit()
+                            current_activity_id = None
+                    time.sleep(POLL_INTERVAL)
+                    continue
+
                 # Presence detection: check if there was any activity in this tick
                 has_input = (keys > 0 or clicks > 0)
                 
@@ -46,12 +61,12 @@ def run_daemon():
                 else:
                     idle_polls_count = 0
                     if is_idle:
-                        print("[DAEMON] User returned from idle.")
+                        print("[RIVER] User returned from idle.")
                         is_idle = False
                 
                 # Check if user crossed the idle threshold
                 if idle_polls_count >= IDLE_TIMEOUT_POLLS and not is_idle:
-                    print(f"[DAEMON] User went idle (no activity for {IDLE_TIMEOUT_POLLS * POLL_INTERVAL} seconds).")
+                    print(f"[DRIVER] User went idle (no activity for {IDLE_TIMEOUT_POLLS * POLL_INTERVAL} seconds).")
                     is_idle = True
                     # Close the current active window session so we don't inflate screen time
                     if current_activity_id:
@@ -93,7 +108,7 @@ def run_daemon():
                         db.commit()
                         db.refresh(new_record)
                         current_activity_id = new_record.id
-                        print(f"[DAEMON] Active Window: {app_name} | Title: {window_title} | Keys: {keys} | Clicks: {clicks}")
+                        print(f"[DRIVER] Active Window: {app_name} | Title: {window_title} | Keys: {keys} | Clicks: {clicks}")
                     
                     # Case B: Still in the same window, accumulate data
                     else:
@@ -101,7 +116,7 @@ def run_daemon():
                         active_record.mouse_click_count += clicks
                         if keys > 0 or clicks > 0:
                             # what are we printing the keys are we storing them all here ..?
-                            print(f"[DAEMON] Activity in {app_name} | +{keys} keys | +{clicks} clicks (Total: {active_record.keystroke_count} keys, {active_record.mouse_click_count} clicks)")
+                            print(f"[DRIVER] Activity in {app_name} | +{keys} keys | +{clicks} clicks (Total: {active_record.keystroke_count} keys, {active_record.mouse_click_count} clicks)")
                         start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
                         active_record.duration_seconds = int((now - start_dt).total_seconds())
                         db.commit()
@@ -117,7 +132,7 @@ def run_daemon():
                         current_activity_id = None
             
             except Exception as e:
-                print(f"[DAEMON ERROR] {e}")
+                print(f"[DRIVER ERROR] {e}")
                 db.rollback()
             finally:
                 db.close()
@@ -125,10 +140,10 @@ def run_daemon():
             time.sleep(POLL_INTERVAL)
             
     except KeyboardInterrupt:
-        print("\nStopping background daemon...")
+        print("\nStopping background driver...")
     finally:
         input_tracker.stop()
-        print("Listeners stopped. Daemon shut down.")
+        print("Listeners stopped. driver shut down.")
 
 if __name__ == "__main__":
-    run_daemon()
+    run_driver()
