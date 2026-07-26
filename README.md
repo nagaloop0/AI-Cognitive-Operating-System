@@ -27,7 +27,15 @@ We track keystroke and mouse click **counts** (never content) to unlock key metr
 * **Dashboard:** Vue 3
 
 ## Phase 1 (Current)
-Data Collection & Base System. The goal is to track active applications and input counts, build patterns, and display them in a dashboard using simple rule-based suggestions.
+Data Collection, REST API & Base System. Tracks active applications, presence, and input activity counts into PostgreSQL, serving analytics via FastAPI to a Vue 3 dashboard with rule-based workflow suggestions.
+
+## Phase 2 (Planned - Intelligence & Local AI)
+Intention Modeling & Local AI Engine.
+* **Local LLM Integration (Ollama):** Analyze user activity patterns locally without sending data to the cloud.
+* **Semantic Clustering (Vector Embeddings):** Group window titles into high-level tasks (e.g. `explore_p` and `AI-OS` -> "Cognitive OS Development").
+* **Fuzzy Sequence Prediction:** Predict user workflow intentions semantically across arbitrary application sets.
+* **Habit Decay Weighting:** Apply exponential decay functions to prioritize recent 7-day work habits over older activity.
+* **Voice Command ("Jarvis Mode"):** Optional local Speech-to-Text and Text-to-Speech interface for natural language activity summaries.
 
 ## Local Setup (Development)
 ```bash
