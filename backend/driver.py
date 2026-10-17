@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from backend.database import engine, Base, SessionLocal
-from backend.models import AppActivity
+from backend.models import AppActivity, UserPreference
 from backend.tracker import get_tracker
 from backend.tracker.input_tracker import InputTracker
 
