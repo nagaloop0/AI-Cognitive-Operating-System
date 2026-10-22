@@ -60,3 +60,10 @@ class PreferenceStatus(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class DashboardData(BaseModel):
+    summary: OverallSummary
+    apps: list[AppSummary]
+    timeline: list[TimelineItem]
+    preference: PreferenceStatus
+

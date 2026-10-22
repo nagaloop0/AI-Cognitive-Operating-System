@@ -119,14 +119,54 @@ Base URL: `http://127.0.0.1:8000`
 
 ---
 
-## 7. Project Roadmap
+---
+
+## 7. Data Transfer Object (DTO) Contract Architecture
+
+Data moving between Python and TypeScript is strictly validated on both ends:
+* **Backend (Python / Pydantic):** Defined in `backend/schemas.py`.
+  ```python
+  class OverallSummary(BaseModel):
+      total_duration_seconds: int
+      total_keystrokes: int
+      total_clicks: int
+      total_sessions: int
+  ```
+* **Frontend (TypeScript / Interface):** Defined in `frontend/src/types.ts`.
+  ```typescript
+  export interface OverallSummary {
+    total_duration_seconds: number;
+    total_keystrokes: number;
+    total_clicks: number;
+    total_sessions: number;
+  }
+  ```
+This dual-contract pattern prevents any runtime crashes caused by unexpected or missing properties.
+
+---
+
+## 8. End-User Distribution Roadmap
+
+Moving from developer testing (`python -m backend.driver`) to production end-user clients:
+1. **Desktop Native Bundle (Tauri / Electron / PyInstaller):**
+   * Package daemon and Vue UI into a single `.dmg` (macOS) or `.exe` (Windows).
+   * Runs in the OS system tray / menu bar with zero terminal interaction.
+2. **Browser Extension (Manifest V3):**
+   * Chrome/Firefox extension using `chrome.tabs.onActivated` and `chrome.idle` for deep URL-level tracking.
+3. **Mobile Clients (Android & iOS):**
+   * Android: Kotlin/React Native using `UsageStatsManager` & AccessibilityService.
+   * iOS: Swift using Apple `Screen Time API` (`FamilyControls`).
+
+---
+
+## 9. Project Roadmap
 
 * **Phase 1: Telemetry & Foundation**
   * `[x]` Hour 1: Core Data Layer (SQLAlchemy + PostgreSQL)
   * `[x]` Hour 2: OS Application Tracking (AppKit + Quartz)
   * `[x]` Hour 3: Privacy Input Counter & Driver Loop (pynput + Idle Timeout)
   * `[x]` Hour 4: FastAPI REST API & Remote Controls
-  * `[ ]` Hour 5: Vue 3 + TypeScript Frontend Dashboard
+  * `[x]` Hour 5: Vue 3 + TypeScript Frontend Dashboard
   * `[ ]` Hour 6: Statistical Pattern Recognition (Markov Chains & macOS Notifications)
 * **Phase 2: Local AI & Intention Modeling**
   * Local LLM (Ollama)

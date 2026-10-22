@@ -9,7 +9,8 @@ from backend.schemas import (
     AppSummary,
     TimelineItem,
     PreferenceStatus,
-    MessageResponse
+    MessageResponse,
+    DashboardData
 )
 
 # Ensure database tables exist
@@ -87,6 +88,65 @@ def get_timeline(limit: int = 20, db: Session = Depends(get_db)):
         .all()
     )
     return sessions
+
+@app.get("/api/stats/dashboard", response_model=DashboardData)
+def get_dashboard_data(limit: int = 15, db: Session = Depends(get_db)):
+    """Bundled high-performance endpoint returning summary, apps, timeline, and preference in a single query."""
+    # Summary
+    total_duration = db.query(func.coalesce(func.sum(AppActivity.duration_seconds), 0)).scalar()
+    total_keystrokes = db.query(func.coalesce(func.sum(AppActivity.keystroke_count), 0)).scalar()
+    total_clicks = db.query(func.coalesce(func.sum(AppActivity.mouse_click_count), 0)).scalar()
+    total_sessions = db.query(func.count(AppActivity.id)).scalar()
+
+    summary = OverallSummary(
+        total_duration_seconds=int(total_duration),
+        total_keystrokes=int(total_keystrokes),
+        total_clicks=int(total_clicks),
+        total_sessions=int(total_sessions)
+    )
+
+    # Apps
+    app_results = (
+        db.query(
+            AppActivity.app_name,
+            func.coalesce(func.sum(AppActivity.duration_seconds), 0).label("total_duration"),
+            func.coalesce(func.sum(AppActivity.keystroke_count), 0).label("total_keystrokes"),
+            func.coalesce(func.sum(AppActivity.mouse_click_count), 0).label("total_clicks"),
+            func.count(AppActivity.id).label("session_count")
+        )
+        .group_by(AppActivity.app_name)
+        .order_by(func.sum(AppActivity.duration_seconds).desc())
+        .all()
+    )
+    apps = [
+        AppSummary(
+            app_name=row.app_name,
+            total_duration_seconds=int(row.total_duration),
+            total_keystrokes=int(row.total_keystrokes),
+            total_clicks=int(row.total_clicks),
+            session_count=int(row.session_count)
+        )
+        for row in app_results
+    ]
+
+    # Timeline
+    timeline = (
+        db.query(AppActivity)
+        .order_by(AppActivity.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Preference
+    pref = db.query(UserPreference).filter(UserPreference.key == "is_tracking_paused").first()
+    is_paused = (pref.value == "true") if pref else False
+
+    return DashboardData(
+        summary=summary,
+        apps=apps,
+        timeline=timeline,
+        preference=PreferenceStatus(is_tracking_paused=is_paused)
+    )
 
 @app.get("/api/control/status", response_model=PreferenceStatus)
 def get_tracking_status(db: Session = Depends(get_db)):

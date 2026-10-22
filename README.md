@@ -4,10 +4,18 @@ A proactive AI Cognitive Operating System that observes user behavior (app usage
 
 This project serves as a foundational layer toward behavioral Brain-Computer Interface (BCI) systems.
 
-## Core Principles (Absolute Privacy)
-1. **Zero Content Logging:** The system only counts keystrokes and mouse clicks. It *never* logs actual characters typed.
-2. **Zero Screen Capture:** The system only asks the OS for the active window's metadata.
-3. **Local First:** All behavioral data is stored locally in a PostgreSQL database (`cognitive_os`).
+## Core Principles & Security Architecture (Absolute Privacy)
+1. **Zero Content & Keystroke Logging:** The system only records raw event counts (`+1` integer increments). Typed characters, passwords, credit cards, chat messages, and mouse screen coordinates are **never captured, inspected, or stored**.
+2. **Zero Screen Capture:** The system never captures pixels, frames, or screenshots. It only queries the operating system window manager for active application names and window title text.
+3. **100% Local-First (Zero Cloud):** All telemetry is stored locally on your machine in PostgreSQL (`127.0.0.1`). No data, telemetry, or analytics ever leave your device or touch the internet.
+4. **User Privacy Controls & GDPR Right-to-Erasure:** A remote pause/resume toggle stops the tracking daemon immediately, and a single-click "Wipe History" permanently deletes all stored activity records from the database.
+5. **No Authentication Required:** Because the system runs strictly on your private local loopback, there are no user accounts, passwords, or cloud tokens to compromise.
+
+## Architecture: DTO Contracts (Pydantic ↔ TypeScript)
+The backend and frontend communicate using strict, mirrored Data Transfer Objects (DTOs):
+* **Backend (Python / Pydantic):** `backend/schemas.py` defines runtime-validated schemas (`OverallSummary`, `AppSummary`, `TimelineItem`).
+* **Frontend (TypeScript):** `frontend/src/types.ts` mirrors those exact schemas as TypeScript interfaces.
+This ensures zero runtime data mismatches or `undefined` property crashes between Python and Vue.
 
 ## macOS Permissions Required
 To enable global window tracking and privacy-safe input counts on macOS:
@@ -19,7 +27,6 @@ To enable global window tracking and privacy-safe input counts on macOS:
 We track keystroke and mouse click **counts** (never content) to unlock key metrics:
 * **Presence & Idle Detection:** Differentiates between when an app is open in the background (0 key/mouse inputs) vs when you are actively typing/clicking. If inactive, the session is marked as "Idle" after a timeout.
 * **Context Mapping:** Distinguishes passive consumption (reading/watching tutorials: low keystrokes, high mouse activity) from active generation (coding/writing docs: high keystrokes, low mouse activity).
-
 ## Tech Stack
 * **Backend Tracker:** Python (AppKit, Quartz, pynput)
 * **Database:** PostgreSQL (SQLAlchemy ORM)
