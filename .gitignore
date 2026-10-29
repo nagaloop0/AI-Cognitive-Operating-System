@@ -5,3 +5,9 @@ __pycache__/
 .cognitive_os/
 .vscode/
 .idea/
+
+# Private Learning Skills (Never commit to git)
+.agents/skills/learning-concepts/
+
+# Local settings (each person creates their own from .env.example)
+.env

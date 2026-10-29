@@ -53,6 +53,9 @@ source venv/bin/activate
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Verify Database
+# 3. Create your local settings file, then edit it with your database details
+cp .env.example .env
+
+# 4. Verify Database
 python test_db.py
 ```
