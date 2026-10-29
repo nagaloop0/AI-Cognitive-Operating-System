@@ -3,14 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from backend.database import get_db, engine, Base
-from backend.models import AppActivity, UserPreference
+from backend.models import AppActivity, UserPreference, HabitPattern, AIPrediction
+from backend.pattern_engine import MarkovPatternEngine
 from backend.schemas import (
     OverallSummary,
     AppSummary,
     TimelineItem,
     PreferenceStatus,
+    NotificationStatus,
     MessageResponse,
-    DashboardData
+    DashboardData,
+    HabitPatternItem,
+    PredictionItem
 )
 
 # Ensure database tables exist
@@ -141,12 +145,53 @@ def get_dashboard_data(limit: int = 15, db: Session = Depends(get_db)):
     pref = db.query(UserPreference).filter(UserPreference.key == "is_tracking_paused").first()
     is_paused = (pref.value == "true") if pref else False
 
+    # Learned Habit Patterns & Recent Proactive Predictions
+    patterns = (
+        db.query(HabitPattern)
+        .order_by(HabitPattern.confidence.desc(), HabitPattern.occurrence_count.desc())
+        .limit(10)
+        .all()
+    )
+    recent_predictions = (
+        db.query(AIPrediction)
+        .order_by(AIPrediction.id.desc())
+        .limit(10)
+        .all()
+    )
+
     return DashboardData(
         summary=summary,
         apps=apps,
         timeline=timeline,
-        preference=PreferenceStatus(is_tracking_paused=is_paused)
+        preference=PreferenceStatus(is_tracking_paused=is_paused),
+        patterns=patterns,
+        recent_predictions=recent_predictions
     )
+
+@app.get("/api/patterns/habits", response_model=list[HabitPatternItem])
+def get_habit_patterns(db: Session = Depends(get_db)):
+    """Returns all learned statistical transition patterns above confidence threshold."""
+    return (
+        db.query(HabitPattern)
+        .order_by(HabitPattern.confidence.desc(), HabitPattern.occurrence_count.desc())
+        .all()
+    )
+
+@app.get("/api/patterns/predictions", response_model=list[PredictionItem])
+def get_predictions(limit: int = 15, db: Session = Depends(get_db)):
+    """Returns recent workflow predictions and their user feedback status."""
+    return (
+        db.query(AIPrediction)
+        .order_by(AIPrediction.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+@app.post("/api/patterns/retrain", response_model=MessageResponse)
+def retrain_patterns(db: Session = Depends(get_db)):
+    """Manually triggers Markov chain transition analysis on historical telemetry."""
+    learned = MarkovPatternEngine.train_patterns(db)
+    return {"message": f"Successfully analyzed transitions and trained {len(learned)} habit pattern(s)."}
 
 @app.get("/api/control/status", response_model=PreferenceStatus)
 def get_tracking_status(db: Session = Depends(get_db)):
@@ -167,6 +212,25 @@ def toggle_tracking_status(db: Session = Depends(get_db)):
     db.commit()
     db.refresh(pref)
     return PreferenceStatus(is_tracking_paused=(pref.value == "true"))
+
+@app.get("/api/control/notifications", response_model=NotificationStatus)
+def get_notification_status(db: Session = Depends(get_db)):
+    """Returns whether desktop pop-ups are on. Off by default: suggestions show only in the dashboard."""
+    pref = db.query(UserPreference).filter(UserPreference.key == "desktop_notifications_enabled").first()
+    return NotificationStatus(desktop_notifications_enabled=(pref is not None and pref.value == "true"))
+
+@app.post("/api/control/notifications/toggle", response_model=NotificationStatus)
+def toggle_notifications(db: Session = Depends(get_db)):
+    """Turns desktop pop-ups on or off."""
+    pref = db.query(UserPreference).filter(UserPreference.key == "desktop_notifications_enabled").first()
+    if not pref:
+        pref = UserPreference(key="desktop_notifications_enabled", value="true")
+        db.add(pref)
+    else:
+        pref.value = "false" if pref.value == "true" else "true"
+    db.commit()
+    db.refresh(pref)
+    return NotificationStatus(desktop_notifications_enabled=(pref.value == "true"))
 
 @app.post("/api/control/clear-history", response_model=MessageResponse)
 def clear_activity_history(db: Session = Depends(get_db)):

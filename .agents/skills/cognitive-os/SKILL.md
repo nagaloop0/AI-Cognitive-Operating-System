@@ -116,6 +116,9 @@ Base URL: `http://127.0.0.1:8000`
 | `GET` | `/api/control/status` | Current tracking state | `{"is_tracking_paused": false}` |
 | `POST` | `/api/control/toggle` | Remote pause/resume switch | `{"is_tracking_paused": true}` |
 | `POST` | `/api/control/clear-history` | Delete all activity rows | `{"message": "Successfully deleted 12 activity records."}` |
+| `GET` | `/api/patterns/habits` | Learned transition habits | `[{"trigger_sequence": "Code", "predicted_action": "Terminal", "confidence": 0.85}]` |
+| `GET` | `/api/patterns/predictions` | Recent suggestion feedback | `[{"trigger_sequence": "Code", "suggested_action": "Terminal", "status": "accepted"}]` |
+| `POST` | `/api/patterns/retrain` | Force retrain Markov chains | `{"message": "Successfully analyzed transitions and trained 3 habit pattern(s)."}` |
 
 ---
 
@@ -167,7 +170,7 @@ Moving from developer testing (`python -m backend.driver`) to production end-use
   * `[x]` Hour 3: Privacy Input Counter & Driver Loop (pynput + Idle Timeout)
   * `[x]` Hour 4: FastAPI REST API & Remote Controls
   * `[x]` Hour 5: Vue 3 + TypeScript Frontend Dashboard
-  * `[ ]` Hour 6: Statistical Pattern Recognition (Markov Chains & macOS Notifications)
+  * `[x]` Hour 6: Statistical Pattern Recognition (Markov Chains & macOS Notifications)
 * **Phase 2: Local AI & Intention Modeling**
   * Local LLM (Ollama)
   * Semantic Task Clustering (Vector Embeddings)

@@ -26,3 +26,9 @@ This list contains high-level ideas, future expansions, and configuration ideas 
 ## Database & Data Structures
 - [ ] **XML Data Structure Feasibility:** Investigate using XML formatting for exporting data relationships, configurations, or patterns.
 - [ ] **Pre-define Database Schemas:** Design Phase 2 tables (Habits, AI predictions, and User Preferences) during Phase 1 to avoid complex migrations later.
+
+## Configuration & Code Cleanup
+- [ ] **Centralized Configuration (`backend/config.py`):**
+  - In a future cleanup pass, move all hardcoded constants into `backend/config.py`.
+  - Include: notification templates, sound options, cooldown constants (`GLOBAL_COOLDOWN_SECONDS`, `SAME_SUGGESTION_COOLDOWN`), Markov hyperparameters (`MIN_OCCURRENCES`, `CONFIDENCE_THRESHOLD`, `MAX_SESSION_GAP_SECONDS`), and default API display limits (`limit=10`).
+

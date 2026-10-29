@@ -58,12 +58,38 @@ class TimelineItem(BaseModel):
 class PreferenceStatus(BaseModel):
     is_tracking_paused: bool
 
+class NotificationStatus(BaseModel):
+    desktop_notifications_enabled: bool
+
 class MessageResponse(BaseModel):
     message: str
+
+class HabitPatternItem(BaseModel):
+    id: int
+    trigger_sequence: str
+    predicted_action: str
+    occurrence_count: int
+    confidence: float
+    last_triggered: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class PredictionItem(BaseModel):
+    id: int
+    timestamp: datetime
+    trigger_sequence: str
+    suggested_action: str
+    status: str
+
+    class Config:
+        from_attributes = True
 
 class DashboardData(BaseModel):
     summary: OverallSummary
     apps: list[AppSummary]
     timeline: list[TimelineItem]
     preference: PreferenceStatus
+    patterns: list[HabitPatternItem] = []
+    recent_predictions: list[PredictionItem] = []
 

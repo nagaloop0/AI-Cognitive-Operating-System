@@ -2,20 +2,33 @@ import time
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from backend.database import engine, Base, SessionLocal
-from backend.models import AppActivity, UserPreference
+from backend.models import AppActivity, UserPreference, AIPrediction
 from backend.tracker import get_tracker
 from backend.tracker.input_tracker import InputTracker
+from backend.pattern_engine import MarkovPatternEngine
+from backend.notifications import notification_manager
 
 # Create database tables if they do not exist
 Base.metadata.create_all(bind=engine)
 
 POLL_INTERVAL = 2          # Check window state every 2 seconds
 IDLE_TIMEOUT_POLLS = 10     # 20 seconds of no key/mouse input = idle (shortened for easy testing)
+TRAIN_INTERVAL_SWITCHES = 5 # Retrain Markov transitions every 5 app switches
 
 def run_driver():
     print("Starting AI Cognitive OS Driver...")
     print("Local database is connected.")
     
+    # Train initial patterns from existing database history
+    try:
+        init_db = SessionLocal()
+        learned = MarkovPatternEngine.train_patterns(init_db)
+        if learned:
+            print(f"[PATTERNS] Initialized {len(learned)} habit pattern(s) from database history.")
+        init_db.close()
+    except Exception as e:
+        print(f"[PATTERNS INIT ERROR] {e}")
+
     # Initialize trackers
     os_tracker = get_tracker()
     input_tracker = InputTracker()
@@ -25,6 +38,8 @@ def run_driver():
     current_activity_id = None
     idle_polls_count = 0
     is_idle = False
+    app_switch_count = 0
+    pending_prediction_id = None
     
     try:
         while True:
@@ -89,6 +104,8 @@ def run_driver():
                     
                     # Case A: No active record, or application/window title changed
                     if not active_record or active_record.app_name != app_name or active_record.window_title != window_title:
+                        is_app_switch = bool(active_record and active_record.app_name != app_name)
+
                         # Close the old record if it exists
                         if active_record:
                             active_record.end_time = now
@@ -109,6 +126,57 @@ def run_driver():
                         db.refresh(new_record)
                         current_activity_id = new_record.id
                         print(f"[DRIVER] Active Window: {app_name} | Title: {window_title} | Keys: {keys} | Clicks: {clicks}")
+
+                        # Trigger prediction & feedback loop on application switches
+                        if is_app_switch:
+                            # 1. Evaluate previous prediction feedback
+                            if pending_prediction_id:
+                                pending = db.query(AIPrediction).filter(AIPrediction.id == pending_prediction_id).first()
+                                if pending and pending.status == "suggested":
+                                    if pending.suggested_action == app_name:
+                                        pending.status = "accepted"
+                                        print(f"[FEEDBACK] Prediction accepted! User opened suggested app: {app_name}")
+                                    else:
+                                        pending.status = "ignored"
+                                    db.commit()
+                                pending_prediction_id = None
+
+                            # 2. Increment switch counter and periodically retrain patterns
+                            app_switch_count += 1
+                            if app_switch_count % TRAIN_INTERVAL_SWITCHES == 0:
+                                learned = MarkovPatternEngine.train_patterns(db)
+                                if learned:
+                                    print(f"[PATTERNS] Retrained Markov transitions: {len(learned)} active habit(s).")
+
+                            # 3. Query prediction for newly focused application
+                            prediction = MarkovPatternEngine.predict_next(app_name, db)
+                            if prediction:
+                                print(f"[PREDICTION] Evaluated '{app_name}' ➔ Top candidate: '{prediction['predicted_app']}' ({prediction['confidence_percent']}% confidence)")
+                                # Desktop pop-ups are off unless the user turns them on (they interrupt more than they help)
+                                popup_pref = db.query(UserPreference).filter(UserPreference.key == "desktop_notifications_enabled").first()
+                                show_popup = popup_pref is not None and popup_pref.value == "true"
+                                dispatched = notification_manager.dispatch_suggestion(
+                                    trigger_app=prediction["trigger_app"],
+                                    predicted_app=prediction["predicted_app"],
+                                    confidence_percent=prediction["confidence_percent"],
+                                    show_popup=show_popup
+                                )
+                                if dispatched:
+                                    pred_record = MarkovPatternEngine.record_prediction(
+                                        trigger=prediction["trigger_app"],
+                                        predicted=prediction["predicted_app"],
+                                        status="suggested",
+                                        db=db
+                                    )
+                                    pending_prediction_id = pred_record.id
+                                    if show_popup:
+                                        print(f"[NOTIFICATION] 🔔 macOS desktop notification dispatched for '{prediction['predicted_app']}'!")
+                                    else:
+                                        print(f"[SUGGESTION] Recorded quietly for the dashboard (desktop pop-ups are off).")
+                                else:
+                                    print(f"[NOTIFICATION] Suppressed by anti-spam cooldown (must wait 45s between desktop alerts).")
+                            else:
+                                print(f"[PREDICTION] No habit pattern found for '{app_name}' with >= 50% confidence.")
                     
                     # Case B: Still in the same window, accumulate data
                     else:

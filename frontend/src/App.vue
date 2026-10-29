@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import type { DashboardData, OverallSummary, AppSummary, TimelineItem } from '@/types'
+import type { DashboardData, OverallSummary, AppSummary, TimelineItem, HabitPatternItem, PredictionItem } from '@/types'
 import HeaderNav from '@/components/HeaderNav.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
 import AppChart from '@/components/AppChart.vue'
 import TimelineFeed from '@/components/TimelineFeed.vue'
 import PrivacyControls from '@/components/PrivacyControls.vue'
+import PatternWidget from '@/components/PatternWidget.vue'
 
 // Proxied via Vite config to http://127.0.0.1:8000
 const API_BASE = '/api'
@@ -18,6 +19,8 @@ const isBusy = ref(false)
 const summary = ref<OverallSummary | null>(null)
 const apps = ref<AppSummary[]>([])
 const timeline = ref<TimelineItem[]>([])
+const patterns = ref<HabitPatternItem[]>([])
+const recentPredictions = ref<PredictionItem[]>([])
 
 let pollTimer: number | null = null
 
@@ -34,6 +37,8 @@ async function fetchDashboardData() {
     apps.value = data.apps
     timeline.value = data.timeline
     isPaused.value = data.preference.is_tracking_paused
+    patterns.value = data.patterns || []
+    recentPredictions.value = data.recent_predictions || []
 
     isConnected.value = true
     lastUpdated.value = new Date().toLocaleTimeString()
@@ -127,6 +132,13 @@ onUnmounted(() => {
       <AppChart :apps="apps" />
       <TimelineFeed :timeline="timeline" />
     </main>
+
+    <!-- Hour 6 Proactive Pattern Intelligence Widget -->
+    <PatternWidget 
+      :patterns="patterns" 
+      :recent-predictions="recentPredictions"
+      @retrain="fetchDashboardData"
+    />
   </div>
 </template>
 

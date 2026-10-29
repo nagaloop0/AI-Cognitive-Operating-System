@@ -34,10 +34,29 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface HabitPatternItem {
+  id: number;
+  trigger_sequence: string;
+  predicted_action: string;
+  occurrence_count: number;
+  confidence: number;
+  last_triggered: string | null;
+}
+
+export interface PredictionItem {
+  id: number;
+  timestamp: string;
+  trigger_sequence: string;
+  suggested_action: string;
+  status: 'suggested' | 'accepted' | 'ignored' | string;
+}
+
 export interface DashboardData {
   summary: OverallSummary;
   apps: AppSummary[];
   timeline: TimelineItem[];
   preference: PreferenceStatus;
+  patterns?: HabitPatternItem[];
+  recent_predictions?: PredictionItem[];
 }
 
