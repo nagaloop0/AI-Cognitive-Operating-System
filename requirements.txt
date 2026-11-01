@@ -9,3 +9,4 @@ pyobjc-framework-Cocoa; sys_platform == 'darwin'
 pyobjc-framework-Quartz; sys_platform == 'darwin'
 psycopg2-binary
 python-dotenv
+httpx

@@ -1,5 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from backend.database import get_db, engine, Base
@@ -17,23 +21,40 @@ from backend.schemas import (
     PredictionItem
 )
 
-# Ensure database tables exist
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure database tables exist (on server start, not on import, so tests never touch the real database)
+    Base.metadata.create_all(bind=engine)
+    yield
 
 app = FastAPI(
     title="AI Cognitive OS API",
     description="Local REST API for activity statistics, workflow patterns, and user privacy control.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# Enable CORS so Vue 3 frontend dashboard (Vite / local dev) can connect seamlessly
+# Only the local Vue dashboard may call this API from a browser (comma-separated list in .env)
+# TODO: when the dashboard is packaged as a desktop app (Tauri / Electron), its address changes:
+#       add the new origin to ALLOWED_ORIGINS in .env and .env.example (no code change needed).
+load_dotenv()
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def block_other_websites(request: Request, call_next):
+    """Rejects browser requests from any other website.
+    CORS alone only hides the response: a simple POST (e.g. clear-history) would still run."""
+    origin = request.headers.get("origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return JSONResponse(status_code=403, content={"detail": "Origin not allowed"})
+    return await call_next(request)
 
 @app.get("/", response_model=MessageResponse)
 def root():
@@ -234,7 +255,9 @@ def toggle_notifications(db: Session = Depends(get_db)):
 
 @app.post("/api/control/clear-history", response_model=MessageResponse)
 def clear_activity_history(db: Session = Depends(get_db)):
-    """Permanently deletes all recorded app activities (User Privacy Rule #4)."""
+    """Permanently deletes all recorded activities and everything learned from them (User Privacy Rule #4)."""
     deleted_count = db.query(AppActivity).delete()
+    habit_count = db.query(HabitPattern).delete()
+    prediction_count = db.query(AIPrediction).delete()
     db.commit()
-    return {"message": f"Successfully deleted {deleted_count} activity records."}
+    return {"message": f"Successfully deleted {deleted_count} activity records, {habit_count} habits and {prediction_count} predictions."}

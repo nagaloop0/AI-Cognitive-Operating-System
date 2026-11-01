@@ -11,3 +11,6 @@ __pycache__/
 
 # Local settings (each person creates their own from .env.example)
 .env
+
+# AI tool files (local only)
+.agents/

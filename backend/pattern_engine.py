@@ -38,9 +38,6 @@ class MarkovPatternEngine:
             .all()
         )
 
-        if len(activities) < 2:
-            return []
-
         # 2. Extract consecutive transitions across app switches
         # transitions[source_app][target_app] = count
         transition_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -76,6 +73,7 @@ class MarkovPatternEngine:
 
         # 3. Compute probabilities and sync with HabitPattern table
         learned_patterns = []
+        kept_pairs = set()
         now = datetime.now(timezone.utc)
 
         for src_app, targets in transition_counts.items():
@@ -112,12 +110,18 @@ class MarkovPatternEngine:
                         )
                         db.add(habit)
 
+                    kept_pairs.add((src_app, dst_app))
                     learned_patterns.append({
                         "trigger": src_app,
                         "predicted": dst_app,
                         "count": count,
                         "confidence": confidence
                     })
+
+        # 4. Remove habits that no longer pass the thresholds (otherwise old habits are predicted forever)
+        for habit in db.query(HabitPattern).all():
+            if (habit.trigger_sequence, habit.predicted_action) not in kept_pairs:
+                db.delete(habit)
 
         db.commit()
         return learned_patterns

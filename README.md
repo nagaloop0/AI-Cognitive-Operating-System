@@ -10,6 +10,7 @@ This project serves as a foundational layer toward behavioral Brain-Computer Int
 3. **100% Local-First (Zero Cloud):** All telemetry is stored locally on your machine in PostgreSQL (`127.0.0.1`). No data, telemetry, or analytics ever leave your device or touch the internet.
 4. **User Privacy Controls & GDPR Right-to-Erasure:** A remote pause/resume toggle stops the tracking daemon immediately, and a single-click "Wipe History" permanently deletes all stored activity records from the database.
 5. **No Authentication Required:** Because the system runs strictly on your private local loopback, there are no user accounts, passwords, or cloud tokens to compromise.
+6. **Other Websites Are Blocked:** Any website open in your browser could try to call the local API. Only the local dashboard address (`ALLOWED_ORIGINS` in `.env`) is accepted; every other website gets `403`, so it can neither read your activity nor delete it.
 
 ## Architecture: DTO Contracts (Pydantic ↔ TypeScript)
 The backend and frontend communicate using strict, mirrored Data Transfer Objects (DTOs):
@@ -56,6 +57,9 @@ pip install -r requirements.txt
 # 3. Create your local settings file, then edit it with your database details
 cp .env.example .env
 
-# 4. Verify Database
-python test_db.py
+# 4. Verify Database (writes one test row into your local database)
+python -m scripts.check_db
+
+# 5. Run the unit tests (fake data only, the real database is never touched)
+python -m pytest
 ```
