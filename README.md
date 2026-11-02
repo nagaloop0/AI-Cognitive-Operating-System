@@ -16,7 +16,7 @@ never **what** you type, and turns that into useful help: habit predictions, a d
 | Habit prediction | First-order Markov chain, P(next app B given app A), with an accept/ignore feedback loop |
 | Day digest | Exact numbers per local day: minutes per app, top titles, breaks, switches, longest focus block |
 | AI daily summary | Local LLM (Ollama, `llama3.2:3b`) writes headline, focus areas, insight and suggestion as JSON-schema output, validated with Pydantic; one retry on invalid JSON; rule-based fallback if the model is down; cached per day |
-| Privacy guardrails | Titles of private apps and incognito/banking windows are never stored; emails and long numbers are masked before any prompt |
+| Privacy guardrails | For private apps and incognito/banking windows the title is replaced by `(private)`; the app name and the time spent are still stored. Emails and long numbers are masked before any prompt |
 | Categories | Work / learning / fun / communication / other: rules for clear apps, the LLM for browser titles, user corrections always win |
 | Task grouping | Window titles embedded with `nomic-embed-text`, stored in **pgvector**, grouped by cosine similarity, named by the LLM |
 | Ask your history (RAG) | Retrieves day digests by date and related titles by vector search, then the LLM answers only from that context |
@@ -54,7 +54,7 @@ flowchart LR
 1. **No content, no keystrokes:** only `+1` counts are stored; typed text, passwords and mouse positions are never captured.
 2. **No screenshots:** only the app name and window title are read from the window manager.
 3. **Local only:** data stays in your local PostgreSQL; the language models run locally with Ollama.
-4. **Guardrails:** private apps and private/banking windows are stored as `(private)`; emails and long numbers are masked before any prompt.
+4. **Guardrails:** for private apps and private/banking windows the window title is stored as `(private)`; the app name and the time spent are still stored (the digest shows them only as "Private apps"). Emails and long numbers are masked before any prompt.
 5. **Right to erasure:** pause anytime; "Clear history" deletes activities and everything learned from them (habits, summaries, categories, tasks).
 6. **Other websites are blocked:** only the dashboard origin (`ALLOWED_ORIGINS` in `.env`) may call the API; any other website gets `403`.
 
@@ -106,8 +106,9 @@ GitHub Actions runs them, plus the frontend type check and build, on every push.
 
 ## Evaluation
 
-`venv/bin/python -m scripts.evaluate --models llama3.2:3b qwen2.5:7b` measures category accuracy on a labelled set,
-task-grouping precision/recall/F1 per similarity threshold, and summary speed and grounding on real days.
+`venv/bin/python -m scripts.evaluate --models llama3.2:3b qwen2.5:7b` measures category accuracy (on the tuning set
+and on a held-out set), task-grouping precision/recall/F1 per similarity threshold, summary speed and grounding on
+real days, and the cached-summary time.
 Results: [docs/evaluation.md](docs/evaluation.md).
 
 ## Tech stack

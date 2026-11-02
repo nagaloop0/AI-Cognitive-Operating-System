@@ -2,7 +2,8 @@
 Privacy guardrails for window titles.
 
 Two layers:
-1. Before storing: titles of private apps (and private/banking windows) are never saved.
+1. Before storing: for private apps (and private/banking windows) the title is replaced by "(private)".
+   The app name and the time spent are still stored, so totals stay correct.
 2. Before any title reaches the language model: emails and long numbers are masked and the title is shortened.
 """
 import re

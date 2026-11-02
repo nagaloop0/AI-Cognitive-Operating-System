@@ -35,7 +35,8 @@ def db():
 @pytest.fixture
 def client(db):
     app.dependency_overrides[get_db] = lambda: db
-    yield TestClient(app)
+    # Host must be a loopback name (see block_other_websites); TestClient's default is 'testserver'
+    yield TestClient(app, base_url="http://localhost:8000")
     app.dependency_overrides.clear()
 
 
@@ -97,3 +98,20 @@ def test_dns_rebinding_is_blocked(client):
                                                           "Host": "evil.example:8000"})
 
     assert response.status_code == 403
+
+
+def test_dns_rebinding_without_origin_is_blocked(client):
+    # A same-origin GET on the rebound domain sends no Origin at all; the Host alone must stop it
+    response = client.get("/api/stats/timeline", headers={"Host": "attacker.example:8000"})
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Host not allowed"}
+
+
+def test_vite_proxy_host_is_allowed(client):
+    # vite.config.ts proxies /api with changeOrigin: true, so the API sees Host 127.0.0.1:8000
+    assert client.get("/api/stats/summary", headers={"Host": "127.0.0.1:8000"}).status_code == 200
+
+
+def test_ipv6_loopback_is_parsed_but_only_allowed_when_trusted(client):
+    assert client.get("/api/stats/summary", headers={"Host": "[::1]:8000"}).status_code == 403

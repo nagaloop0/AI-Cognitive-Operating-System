@@ -51,26 +51,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hosts where the API may trust its own pages (/docs). Keep this to loopback names only.
+# The only host names this API answers to. Keep this to loopback names: a request whose Host is anything
+# else (e.g. an attacker's domain that DNS-rebinds to 127.0.0.1) is rejected, with or without an Origin.
 TRUSTED_LOCAL_HOSTS = set(os.getenv("TRUSTED_LOCAL_HOSTS", "localhost,127.0.0.1").split(","))
 
 
+def host_name(host: str) -> str:
+    """'localhost:8000' -> 'localhost', '[::1]:8000' -> '::1'."""
+    if host.startswith("["):
+        return host[1:host.find("]")]
+    return host.rsplit(":", 1)[0]
+
+
 def is_allowed_origin(origin: str, host: str) -> bool:
-    """The dashboard origins from .env, plus the API's own pages (/docs) when served on localhost.
-    Same-origin is only trusted on localhost: with DNS rebinding an attacker's domain can point at
-    127.0.0.1, and then its Origin and Host would match too."""
-    if origin in ALLOWED_ORIGINS:
-        return True
-    hostname = host.rsplit(":", 1)[0]
-    return hostname in TRUSTED_LOCAL_HOSTS and origin in (f"http://{host}", f"https://{host}")
+    """The dashboard origins from .env, plus the API's own pages (/docs) on a trusted host."""
+    return origin in ALLOWED_ORIGINS or origin in (f"http://{host}", f"https://{host}")
 
 
 @app.middleware("http")
 async def block_other_websites(request: Request, call_next):
-    """Rejects browser requests from any other website.
-    CORS alone only hides the response: a simple POST (e.g. clear-history) would still run."""
+    """Rejects requests that do not come from this Mac's own pages.
+    1. Host must be a trusted loopback name on every request (blocks DNS rebinding, which sends no Origin
+       on same-origin GETs).
+    2. A browser Origin, when present, must be the dashboard or the API itself. CORS alone only hides the
+       response: a simple POST (e.g. clear-history) would still run."""
+    host = request.headers.get("host", "")
+    if host_name(host) not in TRUSTED_LOCAL_HOSTS:
+        return JSONResponse(status_code=403, content={"detail": "Host not allowed"})
     origin = request.headers.get("origin")
-    if origin and not is_allowed_origin(origin, request.headers.get("host", "")):
+    if origin and not is_allowed_origin(origin, host):
         return JSONResponse(status_code=403, content={"detail": "Origin not allowed"})
     return await call_next(request)
 

@@ -11,7 +11,9 @@ services:
       POSTGRES_PASSWORD: cognitive
       POSTGRES_DB: cognitive_os
     ports:
-      - "5433:5432"   # 5433 on the Mac, so it does not clash with a local PostgreSQL on 5432
+      # 127.0.0.1 only: reachable from this Mac, not from other devices on the network.
+      # 5433 on the Mac, so it does not clash with a local PostgreSQL on 5432.
+      - "127.0.0.1:5433:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +37,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
       ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"   # this Mac only
 
 volumes:
   db-data:

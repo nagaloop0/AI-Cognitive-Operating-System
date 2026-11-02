@@ -1,10 +1,13 @@
 """
 Evaluation of the AI features on this Mac (needs Ollama running and the models pulled).
 
-1. Categories: accuracy of each model on a labelled set of 30 window titles.
+1. Categories: accuracy of each model on 30 labelled titles (the set the prompt was tuned on) and on
+   15 held-out titles that were never used while writing the prompt.
 2. Task grouping: pairwise precision / recall / F1 of embedding clusters at several similarity thresholds.
 3. Daily summaries: on your most recent real days, per model: time, valid-JSON attempts, and grounding
    (share of focus areas that use words from the day's window titles).
+4. Cached summary: median time to return an already generated summary (database read, no model call).
+   This step stores one summary in the real `daily_summary` table, as the app itself does.
 
 Results (numbers only) -> docs/evaluation.md, safe to commit.
 Summary texts for rating by hand -> docs/evaluation_samples.local.md (git-ignored: contains your titles).
@@ -13,6 +16,7 @@ Run: venv/bin/python -m scripts.evaluate --models llama3.2:3b qwen2.5:7b
 """
 import argparse
 import json
+import statistics
 import re
 import time
 from datetime import date, datetime
@@ -28,12 +32,13 @@ from backend.digest import build_day_digest
 from backend.llm_client import LLMClient
 from backend.models import AppActivity
 from backend.settings import load_settings
-from backend.summary import generate_summary
+from backend.summary import generate_summary, get_daily_summary
 from backend.tasks import DOCUMENT_PREFIX, cluster, title_text
-from backend.timeutil import as_utc, local_tz
+from backend.timeutil import as_utc, local_today, local_tz
 
 ROOT = Path(__file__).resolve().parent.parent
 LABELLED = ROOT / "scripts" / "eval_data" / "labelled_titles.json"
+HOLDOUT = ROOT / "scripts" / "eval_data" / "holdout_titles.json"
 RESULTS = ROOT / "docs" / "evaluation.md"
 SAMPLES = ROOT / "docs" / "evaluation_samples.local.md"
 THRESHOLDS = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90]
@@ -111,7 +116,30 @@ def evaluate_summaries(models: list[str], days_limit: int) -> tuple[list[dict], 
     return rows, samples
 
 
-def write_report(categories: list[dict], grouping: list[dict], summaries: list[dict]) -> None:
+def evaluate_cache(reads: int = 20) -> dict | None:
+    """Median time of `reads` cache hits for the most recent finished day with an AI summary."""
+    db = SessionLocal()
+    try:
+        llm = LLMClient()
+        for day in recent_days(db, 10):
+            if day >= local_today():
+                continue  # today's summary is partial and refreshed every 30 minutes
+            if get_daily_summary(db, day, llm).source != "llm":
+                continue  # fallbacks are never cached
+            timings = []
+            for _ in range(reads):
+                start = time.perf_counter()
+                get_daily_summary(db, day, llm)
+                timings.append(time.perf_counter() - start)
+            return {"day": day.isoformat(), "reads": reads, "median_ms": statistics.median(timings) * 1000,
+                    "max_ms": max(timings) * 1000}
+    finally:
+        db.close()
+    return None
+
+
+def write_report(categories: list[dict], holdout: list[dict], grouping: list[dict], summaries: list[dict],
+                 cache: dict | None) -> None:
     best = max(grouping, key=lambda r: r["f1"])
     lines = [
         "# Evaluation of the local AI features",
@@ -120,13 +148,19 @@ def write_report(categories: list[dict], grouping: list[dict], summaries: list[d
         "Reproduce: `venv/bin/python -m scripts.evaluate --models llama3.2:3b qwen2.5:7b`",
         "What changed because of these numbers: [evaluation_history.md](evaluation_history.md)",
         "",
-        "## 1. Title categories (30 labelled titles)",
+        "## 1. Title categories",
         "",
-        "| Model | Accuracy | Correct | Time |",
+        "The category prompt was tuned while looking at the 30 labelled titles, so that score is optimistic.",
+        "The 15 held-out titles were written afterwards and never used for tuning: that is the fairer score.",
+        "",
+        "| Model | Tuning set (30) | Held-out set (15) | Time (tuning set) |",
         "| --- | --- | --- | --- |",
-        *[f"| {c['model']} | {c['accuracy']:.0%} | {c['correct']}/{c['total']} | {c['seconds']:.1f} s |" for c in categories],
+        *[f"| {c['model']} | {c['accuracy']:.0%} ({c['correct']}/{c['total']}) | "
+          f"{h['accuracy']:.0%} ({h['correct']}/{h['total']}) | {c['seconds']:.1f} s |" for c, h in zip(categories, holdout)],
         "",
-        *[f"Mistakes of {c['model']}: " + ("; ".join(c["mistakes"]) or "none") for c in categories],
+        *[f"Mistakes of {c['model']} (tuning set): " + ("; ".join(c["mistakes"]) or "none") for c in categories],
+        "",
+        *[f"Mistakes of {h['model']} (held-out set): " + ("; ".join(h["mistakes"]) or "none") for h in holdout],
         "",
         "## 2. Task grouping with embeddings (nomic-embed-text, pairwise scores)",
         "",
@@ -138,7 +172,9 @@ def write_report(categories: list[dict], grouping: list[dict], summaries: list[d
         "",
         "## 3. Daily summaries on real days",
         "",
-        "Grounding = share of focus areas that use words from that day's window titles.",
+        "Grounding = share of focus areas that reuse at least one word (4+ letters) from that day's window titles.",
+        "It only checks that the topics come from the data; it does not check that the insight or suggestion is true.",
+        "Those are rated by hand in docs/evaluation_samples.local.md.",
         "",
         "| Day | Model | Time | Source | Attempts | Grounding |",
         "| --- | --- | --- | --- | --- | --- |",
@@ -151,6 +187,13 @@ def write_report(categories: list[dict], grouping: list[dict], summaries: list[d
         lines.append(f"- {model}: average {np.mean([s['seconds'] for s in mine]):.1f} s per summary, "
                      f"average grounding {np.mean([s['grounding'] for s in mine]):.0%}, "
                      f"{sum(s['attempts'] == 1 and s['source'] == 'llm' for s in mine)}/{len(mine)} valid on the first try.")
+    lines += ["", "## 4. Cached summary", ""]
+    if cache:
+        lines.append(f"A summary that was already generated is read from PostgreSQL without calling the model: median "
+                     f"{cache['median_ms']:.1f} ms, max {cache['max_ms']:.1f} ms over {cache['reads']} reads "
+                     f"(day {cache['day']}; the HTTP request adds a few ms on top).")
+    else:
+        lines.append("Not measured: no finished day with an AI summary was found.")
     RESULTS.parent.mkdir(exist_ok=True)
     RESULTS.write_text("\n".join(lines) + "\n")
 
@@ -162,14 +205,18 @@ def main() -> None:
     args = parser.parse_args()
 
     items = json.loads(LABELLED.read_text())
-    print("1/3 categories ...")
+    print("1/4 categories ...")
     categories = [evaluate_categories(m, items) for m in args.models]
-    print("2/3 task grouping ...")
+    holdout_items = json.loads(HOLDOUT.read_text())
+    holdout = [evaluate_categories(m, holdout_items) for m in args.models]
+    print("2/4 task grouping ...")
     grouping = evaluate_grouping(items)
-    print("3/3 daily summaries ...")
+    print("3/4 daily summaries ...")
     summaries, samples = evaluate_summaries(args.models, args.days)
+    print("4/4 cached summary ...")
+    cache = evaluate_cache()
 
-    write_report(categories, grouping, summaries)
+    write_report(categories, holdout, grouping, summaries, cache)
     SAMPLES.write_text("# Summary samples to rate by hand (local only)\n\n" + "\n".join(samples))
     print(RESULTS.read_text())
     print(f"Samples to rate: {SAMPLES}")

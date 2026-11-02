@@ -28,7 +28,8 @@ def llm():
 def client(db, llm):
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_llm_client] = lambda: llm
-    yield TestClient(app)
+    # Host must be a loopback name (see block_other_websites); TestClient's default is 'testserver'
+    yield TestClient(app, base_url="http://localhost:8000")
     app.dependency_overrides.clear()
 
 
