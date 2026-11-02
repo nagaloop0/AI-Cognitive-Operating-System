@@ -1,0 +1,58 @@
+{
+ "day": "2026-10-29",
+ "headline": "Balancing Development and Learning",
+ "focus_areas": [
+  "DashboardView.vue — shop-web",
+  "orders.py — shop-api",
+  "test_orders.py — shop-api"
+ ],
+ "insight": "You had a productive day with 7 hours and 43 minutes of active time, focusing on development tasks for the shop-web and shop-api projects. The longest focus block of 1 hour and 24 minutes was spent on the shop-api, which is great for deep work. You also spent time learning about Python asyncio, as a",
+ "suggestion": "It looks like you managed to balance your work effectively, with some time dedicated to learning and staying updated. Keep up the good work, and don't hesitate to take breaks to recharge. Your focus on both development and learning is a great approach.",
+ "time_split": [
+  {
+   "app_name": "Code",
+   "minutes": 350
+  },
+  {
+   "app_name": "Google Chrome",
+   "minutes": 64
+  },
+  {
+   "app_name": "zoom.us",
+   "minutes": 15
+  },
+  {
+   "app_name": "Slack",
+   "minutes": 10
+  },
+  {
+   "app_name": "Terminal",
+   "minutes": 10
+  },
+  {
+   "app_name": "Mail",
+   "minutes": 6
+  },
+  {
+   "app_name": "Private apps",
+   "minutes": 5
+  },
+  {
+   "app_name": "Spotify",
+   "minutes": 3
+  }
+ ],
+ "active_minutes": 463,
+ "category_minutes": {
+  "work": 381,
+  "communication": 31,
+  "learning": 29,
+  "fun": 17
+ },
+ "source": "llm",
+ "model": "qwen2.5:7b",
+ "attempts": 1,
+ "is_partial": false,
+ "generated_at": "2026-11-02T06:01:13.350002Z",
+ "notice": "Stored sample: written by qwen2.5:7b on a Mac from the fake demo data."
+}

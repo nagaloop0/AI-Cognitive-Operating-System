@@ -1,0 +1,323 @@
+{
+ "summary": {
+  "total_duration_seconds": 124200,
+  "total_keystrokes": 93305,
+  "total_clicks": 14773,
+  "total_sessions": 107
+ },
+ "apps": [
+  {
+   "app_name": "Code",
+   "total_duration_seconds": 83520,
+   "total_keystrokes": 84637,
+   "total_clicks": 10006,
+   "session_count": 37
+  },
+  {
+   "app_name": "Google Chrome",
+   "total_duration_seconds": 23280,
+   "total_keystrokes": 1000,
+   "total_clicks": 2706,
+   "session_count": 29
+  },
+  {
+   "app_name": "zoom.us",
+   "total_duration_seconds": 7200,
+   "total_keystrokes": 300,
+   "total_clicks": 825,
+   "session_count": 6
+  },
+  {
+   "app_name": "Slack",
+   "total_duration_seconds": 3000,
+   "total_keystrokes": 2448,
+   "total_clicks": 384,
+   "session_count": 10
+  },
+  {
+   "app_name": "Terminal",
+   "total_duration_seconds": 3000,
+   "total_keystrokes": 3090,
+   "total_clicks": 346,
+   "session_count": 10
+  },
+  {
+   "app_name": "Mail",
+   "total_duration_seconds": 1800,
+   "total_keystrokes": 1776,
+   "total_clicks": 204,
+   "session_count": 5
+  },
+  {
+   "app_name": "WhatsApp",
+   "total_duration_seconds": 1500,
+   "total_keystrokes": 30,
+   "total_clicks": 230,
+   "session_count": 5
+  },
+  {
+   "app_name": "Spotify",
+   "total_duration_seconds": 900,
+   "total_keystrokes": 24,
+   "total_clicks": 72,
+   "session_count": 5
+  }
+ ],
+ "timeline": [
+  {
+   "id": 107,
+   "app_name": "Google Chrome",
+   "window_title": "Python asyncio explained - YouTube",
+   "start_time": "2026-10-30T14:52:00",
+   "end_time": "2026-10-30T15:10:00",
+   "duration_seconds": 1080,
+   "keystroke_count": 90,
+   "mouse_click_count": 162
+  },
+  {
+   "id": 106,
+   "app_name": "Spotify",
+   "window_title": "Focus playlist",
+   "start_time": "2026-10-30T14:24:00",
+   "end_time": "2026-10-30T14:27:00",
+   "duration_seconds": 180,
+   "keystroke_count": 3,
+   "mouse_click_count": 12
+  },
+  {
+   "id": 105,
+   "app_name": "Google Chrome",
+   "window_title": "Champions League highlights - YouTube",
+   "start_time": "2026-10-30T14:10:00",
+   "end_time": "2026-10-30T14:24:00",
+   "duration_seconds": 840,
+   "keystroke_count": 0,
+   "mouse_click_count": 140
+  },
+  {
+   "id": 104,
+   "app_name": "Terminal",
+   "window_title": "shop-web — npm run dev",
+   "start_time": "2026-10-30T13:25:00",
+   "end_time": "2026-10-30T13:29:00",
+   "duration_seconds": 240,
+   "keystroke_count": 304,
+   "mouse_click_count": 36
+  },
+  {
+   "id": 103,
+   "app_name": "Google Chrome",
+   "window_title": "Vue Router guide",
+   "start_time": "2026-10-30T13:14:00",
+   "end_time": "2026-10-30T13:25:00",
+   "duration_seconds": 660,
+   "keystroke_count": 0,
+   "mouse_click_count": 33
+  },
+  {
+   "id": 102,
+   "app_name": "Code",
+   "window_title": "DashboardView.vue — shop-web",
+   "start_time": "2026-10-30T12:26:00",
+   "end_time": "2026-10-30T13:14:00",
+   "duration_seconds": 2880,
+   "keystroke_count": 2160,
+   "mouse_click_count": 528
+  },
+  {
+   "id": 101,
+   "app_name": "Slack",
+   "window_title": "#frontend - Team",
+   "start_time": "2026-10-30T12:20:00",
+   "end_time": "2026-10-30T12:26:00",
+   "duration_seconds": 360,
+   "keystroke_count": 270,
+   "mouse_click_count": 12
+  },
+  {
+   "id": 100,
+   "app_name": "Code",
+   "window_title": "DashboardView.vue — shop-web",
+   "start_time": "2026-10-30T10:30:00",
+   "end_time": "2026-10-30T11:25:00",
+   "duration_seconds": 3300,
+   "keystroke_count": 4730,
+   "mouse_click_count": 330
+  },
+  {
+   "id": 99,
+   "app_name": "WhatsApp",
+   "window_title": "(private)",
+   "start_time": "2026-10-30T10:25:00",
+   "end_time": "2026-10-30T10:30:00",
+   "duration_seconds": 300,
+   "keystroke_count": 0,
+   "mouse_click_count": 35
+  },
+  {
+   "id": 98,
+   "app_name": "Google Chrome",
+   "window_title": "Pull request #48: Add order search - GitHub",
+   "start_time": "2026-10-30T10:13:00",
+   "end_time": "2026-10-30T10:25:00",
+   "duration_seconds": 720,
+   "keystroke_count": 36,
+   "mouse_click_count": 24
+  },
+  {
+   "id": 97,
+   "app_name": "Terminal",
+   "window_title": "shop-api — pytest",
+   "start_time": "2026-10-30T10:07:00",
+   "end_time": "2026-10-30T10:13:00",
+   "duration_seconds": 360,
+   "keystroke_count": 408,
+   "mouse_click_count": 42
+  },
+  {
+   "id": 96,
+   "app_name": "Code",
+   "window_title": "orders.py — shop-api",
+   "start_time": "2026-10-30T09:15:00",
+   "end_time": "2026-10-30T10:07:00",
+   "duration_seconds": 3120,
+   "keystroke_count": 4576,
+   "mouse_click_count": 104
+  },
+  {
+   "id": 95,
+   "app_name": "zoom.us",
+   "window_title": "Zoom Meeting",
+   "start_time": "2026-10-30T09:00:00",
+   "end_time": "2026-10-30T09:15:00",
+   "duration_seconds": 900,
+   "keystroke_count": 60,
+   "mouse_click_count": 150
+  },
+  {
+   "id": 94,
+   "app_name": "Code",
+   "window_title": "test_orders.py — shop-api",
+   "start_time": "2026-10-30T08:52:00",
+   "end_time": "2026-10-30T08:59:00",
+   "duration_seconds": 420,
+   "keystroke_count": 371,
+   "mouse_click_count": 28
+  },
+  {
+   "id": 93,
+   "app_name": "Google Chrome",
+   "window_title": "SQLAlchemy relationships - Documentation",
+   "start_time": "2026-10-30T08:43:00",
+   "end_time": "2026-10-30T08:52:00",
+   "duration_seconds": 540,
+   "keystroke_count": 9,
+   "mouse_click_count": 36
+  }
+ ],
+ "preference": {
+  "is_tracking_paused": false
+ },
+ "patterns": [
+  {
+   "id": 1,
+   "trigger_sequence": "Mail",
+   "predicted_action": "Slack",
+   "occurrence_count": 5,
+   "confidence": 1.0,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 4,
+   "trigger_sequence": "zoom.us",
+   "predicted_action": "Code",
+   "occurrence_count": 5,
+   "confidence": 1.0,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 7,
+   "trigger_sequence": "Spotify",
+   "predicted_action": "Code",
+   "occurrence_count": 4,
+   "confidence": 1.0,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 2,
+   "trigger_sequence": "Slack",
+   "predicted_action": "Code",
+   "occurrence_count": 9,
+   "confidence": 0.9,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 6,
+   "trigger_sequence": "WhatsApp",
+   "predicted_action": "Code",
+   "occurrence_count": 4,
+   "confidence": 0.8,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 3,
+   "trigger_sequence": "Code",
+   "predicted_action": "Google Chrome",
+   "occurrence_count": 16,
+   "confidence": 0.615,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  },
+  {
+   "id": 5,
+   "trigger_sequence": "Terminal",
+   "predicted_action": "Google Chrome",
+   "occurrence_count": 5,
+   "confidence": 0.556,
+   "last_triggered": "2026-11-02T06:00:05.351147"
+  }
+ ],
+ "recent_predictions": [
+  {
+   "id": 6,
+   "timestamp": "2026-11-02T06:00:05.358002",
+   "trigger_sequence": "Code",
+   "suggested_action": "Google Chrome",
+   "status": "ignored"
+  },
+  {
+   "id": 5,
+   "timestamp": "2026-11-02T06:00:05.357499",
+   "trigger_sequence": "WhatsApp",
+   "suggested_action": "Code",
+   "status": "accepted"
+  },
+  {
+   "id": 4,
+   "timestamp": "2026-11-02T06:00:05.356980",
+   "trigger_sequence": "Slack",
+   "suggested_action": "Code",
+   "status": "accepted"
+  },
+  {
+   "id": 3,
+   "timestamp": "2026-11-02T06:00:05.356478",
+   "trigger_sequence": "Spotify",
+   "suggested_action": "Code",
+   "status": "ignored"
+  },
+  {
+   "id": 2,
+   "timestamp": "2026-11-02T06:00:05.355900",
+   "trigger_sequence": "zoom.us",
+   "suggested_action": "Code",
+   "status": "accepted"
+  },
+  {
+   "id": 1,
+   "timestamp": "2026-11-02T06:00:05.354654",
+   "trigger_sequence": "Mail",
+   "suggested_action": "Slack",
+   "status": "accepted"
+  }
+ ]
+}

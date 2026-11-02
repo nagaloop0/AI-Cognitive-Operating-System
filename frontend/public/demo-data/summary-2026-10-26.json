@@ -1,0 +1,58 @@
+{
+ "day": "2026-10-26",
+ "headline": "Balancing Development and Learning",
+ "focus_areas": [
+  "DashboardView.vue — shop-web",
+  "orders.py — shop-api",
+  "test_orders.py — shop-api"
+ ],
+ "insight": "You managed to balance productive coding with learning sessions and communication, making the most of your 7 hours and 22 minutes of active time. Your longest focus block of 55 minutes on 'DashboardView.vue' shows your dedication to the project. It's great to see you also taking time to understand '",
+ "suggestion": "Keep up the good work! Maybe consider setting aside a bit more time for fun or breaks next time to ensure you stay fresh and energized throughout the day.",
+ "time_split": [
+  {
+   "app_name": "Code",
+   "minutes": 300
+  },
+  {
+   "app_name": "Google Chrome",
+   "minutes": 93
+  },
+  {
+   "app_name": "zoom.us",
+   "minutes": 15
+  },
+  {
+   "app_name": "Slack",
+   "minutes": 10
+  },
+  {
+   "app_name": "Terminal",
+   "minutes": 10
+  },
+  {
+   "app_name": "Mail",
+   "minutes": 6
+  },
+  {
+   "app_name": "Private apps",
+   "minutes": 5
+  },
+  {
+   "app_name": "Spotify",
+   "minutes": 3
+  }
+ ],
+ "active_minutes": 442,
+ "category_minutes": {
+  "work": 351,
+  "learning": 38,
+  "communication": 31,
+  "fun": 17
+ },
+ "source": "llm",
+ "model": "qwen2.5:7b",
+ "attempts": 1,
+ "is_partial": false,
+ "generated_at": "2026-11-02T06:00:39.787886Z",
+ "notice": "Stored sample: written by qwen2.5:7b on a Mac from the fake demo data."
+}

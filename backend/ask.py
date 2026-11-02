@@ -95,7 +95,8 @@ def answer_question(db: Session, llm, question: str, today: date | None = None) 
         context += [f"- {s.day:%a %Y-%m-%d} | {s.app_name} | {s.window_title} | {format_seconds(s.seconds)}"
                     for s in sources]
     else:
-        context.append("No window titles match the question.")
+        # A 3B model read "no titles match" as "no data at all" and ignored the day reports
+        context.append("No additional window titles matched the question by meaning; answer from the day reports above.")
 
     answer = llm.chat([
         {"role": "system", "content": SYSTEM_PROMPT},

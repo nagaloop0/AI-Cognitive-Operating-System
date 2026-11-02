@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { apiFetch } from '@/api'
 import { Search, Loader2, AlertCircle, History } from '@lucide/vue'
 import type { AskAnswer } from '@/types'
 
@@ -17,13 +18,16 @@ async function ask(text?: string) {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const res = await fetch('/api/ask', {
+    const res = await apiFetch('/api/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q }),
     })
-    if (res.status === 503) throw new Error('The local AI is not running. Start it with: brew services start ollama')
-    if (!res.ok) throw new Error(`API error ${res.status}`)
+    if (!res.ok) {
+      // The API (or the demo) explains what went wrong in `detail`, e.g. "Ollama is not running ..."
+      const body = await res.json().catch(() => ({}))
+      throw new Error(typeof body.detail === 'string' ? body.detail : `API error ${res.status}`)
+    }
     result.value = (await res.json()) as AskAnswer
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Something went wrong.'

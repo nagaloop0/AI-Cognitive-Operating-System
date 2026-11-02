@@ -141,4 +141,4 @@ def test_answer_without_embeddings_still_uses_day_reports(db):
 
     assert result.sources == []
     assert result.days == [YESTERDAY]
-    assert "No window titles match the question." in llm.calls[-1]["messages"][1]["content"]
+    assert "No additional window titles matched the question by meaning; answer from the day reports above." in llm.calls[-1]["messages"][1]["content"]

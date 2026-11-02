@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { apiFetch, IS_DEMO, loadDemoManifest } from '@/api'
 import { Sparkles, RefreshCw, Lightbulb, Target, AlertCircle, Moon } from '@lucide/vue'
 import type { DailySummary } from '@/types'
 
@@ -26,6 +27,9 @@ function localIsoDate(offsetDays: number): string {
 const today = localIsoDate(0)
 const yesterday = localIsoDate(-1)
 const selectedDay = ref(yesterday)
+// Demo build: only the fake demo days exist, so the picker is limited to them
+const demoFirstDay = ref('')
+const demoLastDay = ref('')
 const isEmpty = computed(() => summary.value !== null && summary.value.active_minutes === 0)
 const maxMinutes = computed(() => Math.max(1, ...(summary.value?.time_split.map((t) => t.minutes) ?? [1])))
 const categoryTotal = computed(() =>
@@ -38,7 +42,7 @@ async function loadSummary(refresh = false) {
   errorMessage.value = ''
   try {
     const params = new URLSearchParams({ day: selectedDay.value, refresh: String(refresh) })
-    const res = await fetch(`/api/summary/daily?${params}`)
+    const res = await apiFetch(`/api/summary/daily?${params}`)
     if (!res.ok) throw new Error(`API error ${res.status}`)
     summary.value = (await res.json()) as DailySummary
   } catch (err) {
@@ -59,7 +63,20 @@ function formatMinutes(minutes: number): string {
 watch(selectedDay, (day) => {
   if (day) loadSummary()
 })
-onMounted(() => loadSummary())
+onMounted(async () => {
+  const manifest = await loadDemoManifest()
+  if (manifest) {
+    demoFirstDay.value = manifest.days[0] ?? ''
+    demoLastDay.value = manifest.latest_day
+    if (selectedDay.value === manifest.latest_day) {
+      loadSummary()
+    } else {
+      selectedDay.value = manifest.latest_day // the watcher loads it
+    }
+    return
+  }
+  loadSummary()
+})
 </script>
 
 <template>
@@ -73,12 +90,13 @@ onMounted(() => loadSummary())
         </div>
       </div>
       <div class="actions">
-        <div class="day-toggle" role="group" aria-label="Choose day">
+        <div v-if="!IS_DEMO" class="day-toggle" role="group" aria-label="Choose day">
           <button :class="{ active: selectedDay === yesterday }" @click="selectedDay = yesterday">Yesterday</button>
           <button :class="{ active: selectedDay === today }" @click="selectedDay = today">Today</button>
         </div>
-        <input v-model="selectedDay" class="day-picker" type="date" :max="today" aria-label="Pick a day" />
-        <button class="icon-btn" :class="{ spinning: isLoading }" :disabled="isLoading"
+        <input v-model="selectedDay" class="day-picker" type="date" :min="demoFirstDay || undefined"
+               :max="demoLastDay || today" aria-label="Pick a day" />
+        <button v-if="!IS_DEMO" class="icon-btn" :class="{ spinning: isLoading }" :disabled="isLoading"
                 title="Write a new summary" @click="loadSummary(true)">
           <RefreshCw :size="14" />
         </button>

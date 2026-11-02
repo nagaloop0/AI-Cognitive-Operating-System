@@ -7,6 +7,22 @@ never **what** you type, and turns that into useful help: habit predictions, a d
 
 ![Tests](https://github.com/nagaloop0/AI-Cognitive-Operating-System/actions/workflows/tests.yml/badge.svg)
 
+## Live demo (fake data)
+
+**https://nagaloop0.github.io/AI-Cognitive-Operating-System/**
+
+This is a static, read-only demo with **fake data only**: one invented work week of a fictional developer
+(`scripts/demo_seed.py`). No real activity is in it; real data never leaves the Mac.
+
+- There is no server and no AI model online. The dashboard reads JSON files that the real backend code produced
+  from the fake week (`scripts/build_demo_data.py`, run locally).
+- The AI texts (summaries, assistant messages, answers to the example questions) are **stored samples**, written
+  by `qwen2.5:7b` running locally on a Mac. Like any model output they can contain mistakes.
+- Every change is refused (pause, clear history, retrain, mark as read); the Ask box answers only its example questions.
+- Published by GitHub Actions on every push to `main` (`.github/workflows/pages.yml`).
+
+Rebuild the demo data (needs Ollama): `venv/bin/python -m scripts.build_demo_data --model qwen2.5:7b`
+
 ## Features
 
 | Feature | How it works |

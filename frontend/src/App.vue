@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { apiFetch, IS_DEMO } from '@/api'
+import DemoBanner from '@/components/DemoBanner.vue'
 import type { DashboardData, OverallSummary, AppSummary, TimelineItem, HabitPatternItem, PredictionItem } from '@/types'
 import HeaderNav from '@/components/HeaderNav.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
@@ -30,7 +32,7 @@ let pollTimer: number | null = null
 // Bundled high-performance fetch
 async function fetchDashboardData() {
   try {
-    const res = await fetch(`${API_BASE}/stats/dashboard?limit=15`)
+    const res = await apiFetch(`${API_BASE}/stats/dashboard?limit=15`)
     if (!res.ok) {
       throw new Error(`API error: ${res.status}`)
     }
@@ -54,7 +56,7 @@ async function handleTogglePause() {
   if (isBusy.value) return
   isBusy.value = true
   try {
-    const res = await fetch(`${API_BASE}/control/toggle`, { method: 'POST' })
+    const res = await apiFetch(`${API_BASE}/control/toggle`, { method: 'POST' })
     if (res.ok) {
       const data = await res.json()
       isPaused.value = data.is_tracking_paused
@@ -70,7 +72,7 @@ async function handleClearHistory() {
   if (isBusy.value) return
   isBusy.value = true
   try {
-    const res = await fetch(`${API_BASE}/control/clear-history`, { method: 'POST' })
+    const res = await apiFetch(`${API_BASE}/control/clear-history`, { method: 'POST' })
     if (res.ok) {
       await fetchDashboardData()
     }
@@ -118,6 +120,8 @@ onUnmounted(() => {
       :is-connected="isConnected" 
       :last-updated="lastUpdated" 
     />
+
+    <DemoBanner v-if="IS_DEMO" />
 
     <!-- Privacy & Remote Control Action Bar -->
     <PrivacyControls 

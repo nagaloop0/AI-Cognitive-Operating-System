@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { apiFetch } from '@/api'
 import { MessageCircle, Check, Coffee, Sunset, Bell, Mail } from '@lucide/vue'
 import type { AssistantMessage } from '@/types'
 
@@ -15,7 +16,7 @@ const ICONS: Record<AssistantMessage['kind'], typeof Bell> = {
 
 async function loadMessages() {
   try {
-    const res = await fetch('/api/assistant/messages?limit=10')
+    const res = await apiFetch('/api/assistant/messages?limit=10')
     if (res.ok) messages.value = (await res.json()) as AssistantMessage[]
   } catch (err) {
     console.error('Failed to load assistant messages', err)
@@ -23,7 +24,7 @@ async function loadMessages() {
 }
 
 async function markRead(message: AssistantMessage) {
-  const res = await fetch(`/api/assistant/messages/${message.id}/read`, { method: 'POST' })
+  const res = await apiFetch(`/api/assistant/messages/${message.id}/read`, { method: 'POST' })
   if (res.ok) message.is_read = true
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { apiFetch } from '@/api'
 import { Sparkles, ArrowRight, RefreshCw, CheckCircle2, Clock, Zap, HelpCircle } from '@lucide/vue'
 import type { HabitPatternItem, PredictionItem } from '@/types'
 
@@ -18,7 +19,7 @@ async function handleRetrain() {
   if (isRetraining.value) return
   isRetraining.value = true
   try {
-    const res = await fetch('/api/patterns/retrain', { method: 'POST' })
+    const res = await apiFetch('/api/patterns/retrain', { method: 'POST' })
     if (res.ok) {
       emit('retrain')
     }

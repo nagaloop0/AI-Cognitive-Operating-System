@@ -1,0 +1,59 @@
+{
+ "day": "2026-10-28",
+ "headline": "Balancing Development and Learning",
+ "focus_areas": [
+  "orders.py — shop-api",
+  "test_orders.py — shop-api",
+  "CartView.vue — shop-web",
+  "Python asyncio explained - YouTube"
+ ],
+ "insight": "You managed to balance your development tasks with some valuable learning time, watching a detailed explanation of Python asyncio. This will likely help in optimizing your code in the future. Keep up the good work!",
+ "suggestion": "Consider taking slightly longer breaks next time to ensure you're well-rested for the next round of focused work. Great job today!",
+ "time_split": [
+  {
+   "app_name": "Code",
+   "minutes": 197
+  },
+  {
+   "app_name": "Google Chrome",
+   "minutes": 108
+  },
+  {
+   "app_name": "zoom.us",
+   "minutes": 60
+  },
+  {
+   "app_name": "Slack",
+   "minutes": 10
+  },
+  {
+   "app_name": "Terminal",
+   "minutes": 10
+  },
+  {
+   "app_name": "Mail",
+   "minutes": 6
+  },
+  {
+   "app_name": "Private apps",
+   "minutes": 5
+  },
+  {
+   "app_name": "Spotify",
+   "minutes": 3
+  }
+ ],
+ "active_minutes": 399,
+ "category_minutes": {
+  "work": 228,
+  "communication": 76,
+  "fun": 52,
+  "learning": 38
+ },
+ "source": "llm",
+ "model": "qwen2.5:7b",
+ "attempts": 1,
+ "is_partial": false,
+ "generated_at": "2026-11-02T06:01:00.511353Z",
+ "notice": "Stored sample: written by qwen2.5:7b on a Mac from the fake demo data."
+}

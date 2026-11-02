@@ -1,0 +1,64 @@
+[
+ {
+  "question": "What did I work on yesterday?",
+  "answer": {
+   "question": "What did I work on yesterday?",
+   "answer": "You worked on Code for 3 hours and 42 minutes, focusing on DashboardView.vue, orders.py, and test_orders.py. You also had some communication and learning activities.",
+   "days": [
+    "2026-10-30"
+   ],
+   "sources": []
+  }
+ },
+ {
+  "question": "When did I work on the dashboard?",
+  "answer": {
+   "question": "When did I work on the dashboard?",
+   "answer": "You worked on the DashboardView.vue — shop-web file on multiple days: Friday 2026-10-30 for 1 hour 43 minutes, Thursday 2026-10-29 for 2 hours 33 minutes, Tuesday 2026-10-27 for 1 hour 43 minutes, and Monday 2026-10-26 for 1 hour 43 minutes.",
+   "days": [
+    "2026-10-30",
+    "2026-10-29",
+    "2026-10-28",
+    "2026-10-27",
+    "2026-10-26"
+   ],
+   "sources": [
+    {
+     "day": "2026-10-30",
+     "app_name": "Code",
+     "window_title": "DashboardView.vue — shop-web",
+     "seconds": 6180
+    },
+    {
+     "day": "2026-10-29",
+     "app_name": "Code",
+     "window_title": "DashboardView.vue — shop-web",
+     "seconds": 9180
+    },
+    {
+     "day": "2026-10-27",
+     "app_name": "Code",
+     "window_title": "DashboardView.vue — shop-web",
+     "seconds": 6180
+    },
+    {
+     "day": "2026-10-26",
+     "app_name": "Code",
+     "window_title": "DashboardView.vue — shop-web",
+     "seconds": 6180
+    }
+   ]
+  }
+ },
+ {
+  "question": "How was my focus on Monday?",
+  "answer": {
+   "question": "How was my focus on Monday?",
+   "answer": "On Monday, you had the longest focus session of 55 minutes working on Code from 11:30 to 12:25.",
+   "days": [
+    "2026-10-26"
+   ],
+   "sources": []
+  }
+ }
+]
