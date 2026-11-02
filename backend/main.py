@@ -6,8 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from backend.database import get_db, engine, Base
-from backend.models import AppActivity, UserPreference, HabitPattern, AIPrediction
+from backend.database import get_db, init_db
+from backend.models import (
+    AppActivity, UserPreference, HabitPattern, AIPrediction,
+    DailySummary, AssistantMessage, TitleCategory, TitleEmbedding, Task,
+)
+from backend.routes import assistant, categories, insights, settings, summary
 from backend.pattern_engine import MarkovPatternEngine
 from backend.schemas import (
     OverallSummary,
@@ -24,7 +28,7 @@ from backend.schemas import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure database tables exist (on server start, not on import, so tests never touch the real database)
-    Base.metadata.create_all(bind=engine)
+    init_db()
     yield
 
 app = FastAPI(
@@ -47,14 +51,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Hosts where the API may trust its own pages (/docs). Keep this to loopback names only.
+TRUSTED_LOCAL_HOSTS = set(os.getenv("TRUSTED_LOCAL_HOSTS", "localhost,127.0.0.1").split(","))
+
+
+def is_allowed_origin(origin: str, host: str) -> bool:
+    """The dashboard origins from .env, plus the API's own pages (/docs) when served on localhost.
+    Same-origin is only trusted on localhost: with DNS rebinding an attacker's domain can point at
+    127.0.0.1, and then its Origin and Host would match too."""
+    if origin in ALLOWED_ORIGINS:
+        return True
+    hostname = host.rsplit(":", 1)[0]
+    return hostname in TRUSTED_LOCAL_HOSTS and origin in (f"http://{host}", f"https://{host}")
+
+
 @app.middleware("http")
 async def block_other_websites(request: Request, call_next):
     """Rejects browser requests from any other website.
     CORS alone only hides the response: a simple POST (e.g. clear-history) would still run."""
     origin = request.headers.get("origin")
-    if origin and origin not in ALLOWED_ORIGINS:
+    if origin and not is_allowed_origin(origin, request.headers.get("host", "")):
         return JSONResponse(status_code=403, content={"detail": "Origin not allowed"})
     return await call_next(request)
+
+app.include_router(summary.router)
+app.include_router(categories.router)
+app.include_router(assistant.router)
+app.include_router(settings.router)
+app.include_router(insights.router)
 
 @app.get("/", response_model=MessageResponse)
 def root():
@@ -255,9 +279,13 @@ def toggle_notifications(db: Session = Depends(get_db)):
 
 @app.post("/api/control/clear-history", response_model=MessageResponse)
 def clear_activity_history(db: Session = Depends(get_db)):
-    """Permanently deletes all recorded activities and everything learned from them (User Privacy Rule #4)."""
+    """Permanently deletes all recorded activities and everything learned from them (User Privacy Rule #4).
+    Settings are kept: they are choices, not activity data."""
     deleted_count = db.query(AppActivity).delete()
     habit_count = db.query(HabitPattern).delete()
     prediction_count = db.query(AIPrediction).delete()
+    for derived in (DailySummary, AssistantMessage, TitleCategory, TitleEmbedding, Task):
+        db.query(derived).delete()
     db.commit()
-    return {"message": f"Successfully deleted {deleted_count} activity records, {habit_count} habits and {prediction_count} predictions."}
+    return {"message": f"Successfully deleted {deleted_count} activity records, {habit_count} habits, "
+                       f"{prediction_count} predictions and all summaries, messages, categories and tasks."}

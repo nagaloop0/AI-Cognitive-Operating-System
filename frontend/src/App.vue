@@ -7,6 +7,9 @@ import AppChart from '@/components/AppChart.vue'
 import TimelineFeed from '@/components/TimelineFeed.vue'
 import PrivacyControls from '@/components/PrivacyControls.vue'
 import PatternWidget from '@/components/PatternWidget.vue'
+import SummaryCard from '@/components/SummaryCard.vue'
+import AssistantMessages from '@/components/AssistantMessages.vue'
+import AskHistory from '@/components/AskHistory.vue'
 
 // Proxied via Vite config to http://127.0.0.1:8000
 const API_BASE = '/api'
@@ -127,6 +130,15 @@ onUnmounted(() => {
     <!-- Top KPI Summary Cards -->
     <SummaryCards :summary="summary" />
 
+    <!-- Phase 2: AI daily summary and assistant messages -->
+    <section class="assistant-grid">
+      <SummaryCard />
+      <div class="side-column">
+        <AskHistory />
+        <AssistantMessages />
+      </div>
+    </section>
+
     <!-- Main Visual Split Grid -->
     <main class="dashboard-grid">
       <AppChart :apps="apps" />
@@ -143,5 +155,22 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Scoped overrides if needed */
+.assistant-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (max-width: 980px) {
+  .assistant-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

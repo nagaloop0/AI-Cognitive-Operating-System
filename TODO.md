@@ -32,5 +32,6 @@ This list contains high-level ideas, future expansions, and configuration ideas 
   - In a future cleanup pass, move all hardcoded constants into `backend/config.py`.
   - Include: notification templates, sound options, cooldown constants (`GLOBAL_COOLDOWN_SECONDS`, `SAME_SUGGESTION_COOLDOWN`), Markov hyperparameters (`MIN_OCCURRENCES`, `CONFIDENCE_THRESHOLD`, `MAX_SESSION_GAP_SECONDS`), and default API display limits (`limit=10`).
 - [ ] **Allowed Origins for a Packaged App:** When the dashboard ships as a desktop app (Tauri / Electron), add its new origin to `ALLOWED_ORIGINS` in `.env` and `.env.example` (see the TODO in `backend/main.py`).
-- [ ] **Rebuild the Virtual Environment:** `venv/` mixes Python 3.12 and 3.14 (`venv/bin/pip` installs for 3.14, `venv/bin/python` runs 3.12). Recreate it with one Python version: `rm -rf venv && python3.12 -m venv venv && venv/bin/python -m pip install -r requirements.txt`. Until then, always install with `venv/bin/python -m pip install ...`.
+- [x] **Rebuild the Virtual Environment:** done on 2026-11-01 (clean Python 3.12 venv). Keep installing with `venv/bin/python -m pip install ...`.
+- [ ] **Move the Dashboard to Bootstrap:** Replace the custom CSS in `frontend/src/components/` with Bootstrap 5 utility and component classes. Do it for the whole dashboard at once (not component by component), keep the dark/light theme variables from `style.css`, and ask before installing Bootstrap.
 

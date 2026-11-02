@@ -81,3 +81,19 @@ def test_clear_history_deletes_activities_habits_and_predictions(client, db):
     assert db.query(AppActivity).count() == 0
     assert db.query(HabitPattern).count() == 0
     assert db.query(AIPrediction).count() == 0
+
+
+def test_api_docs_page_can_call_the_api(client):
+    # Swagger UI at http://localhost:8000/docs sends its own address as Origin on POST requests
+    response = client.post("/api/patterns/retrain", headers={"Origin": "http://localhost:8000",
+                                                             "Host": "localhost:8000"})
+
+    assert response.status_code == 200
+
+
+def test_dns_rebinding_is_blocked(client):
+    # An attacker's domain pointed at 127.0.0.1: Origin and Host match, but the host is not localhost
+    response = client.get("/api/stats/timeline", headers={"Origin": "http://evil.example:8000",
+                                                          "Host": "evil.example:8000"})
+
+    assert response.status_code == 403

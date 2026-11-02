@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 # Base schema for creating a new activity record
@@ -24,8 +24,7 @@ class AppActivitySchema(BaseModel):
     mouse_click_count: int
     duration_seconds: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- API DTOs (Data Transfer Objects for Dashboard Responses) ---
 
@@ -52,8 +51,7 @@ class TimelineItem(BaseModel):
     keystroke_count: int
     mouse_click_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PreferenceStatus(BaseModel):
     is_tracking_paused: bool
@@ -72,8 +70,7 @@ class HabitPatternItem(BaseModel):
     confidence: float
     last_triggered: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PredictionItem(BaseModel):
     id: int
@@ -82,8 +79,7 @@ class PredictionItem(BaseModel):
     suggested_action: str
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class DashboardData(BaseModel):
     summary: OverallSummary

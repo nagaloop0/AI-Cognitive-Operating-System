@@ -1,217 +1,253 @@
+"""
+Background tracker: every 2 seconds it records the active window, detects idle time,
+learns app habits and lets the assistant speak at the right moment.
+
+Run: venv/bin/python -m backend.driver
+"""
+import logging
+import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+
 from sqlalchemy.orm import Session
-from backend.database import engine, Base, SessionLocal
-from backend.models import AppActivity, UserPreference, AIPrediction
-from backend.tracker import get_tracker
-from backend.tracker.input_tracker import InputTracker
-from backend.pattern_engine import MarkovPatternEngine
+
+from backend.assistant import end_of_day, sent_on, welcome_back
+from backend.database import SessionLocal, init_db
+from backend.llm_client import LLMClient
+from backend.models import AIPrediction, AppActivity, UserPreference
 from backend.notifications import notification_manager
+from backend.pattern_engine import MarkovPatternEngine
+from backend.privacy import title_for_storage
+from backend.settings import AssistantSettings, load_settings
+from backend.timeutil import as_utc, local_tz
+from backend.timing import idle_threshold_seconds, is_end_of_day_due, is_welcome_back
 
-# Create database tables if they do not exist
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger("driver")
 
-POLL_INTERVAL = 2          # Check window state every 2 seconds
-IDLE_TIMEOUT_POLLS = 10     # 20 seconds of no key/mouse input = idle (shortened for easy testing)
-TRAIN_INTERVAL_SWITCHES = 5 # Retrain Markov transitions every 5 app switches
+POLL_INTERVAL = 2               # check the active window every 2 seconds
+TRAIN_INTERVAL_SWITCHES = 5     # retrain Markov transitions every 5 app switches
+SETTINGS_REFRESH_SECONDS = 30   # pick up settings changed in the dashboard
+END_OF_DAY_RETRY = timedelta(minutes=10)
 
-def run_driver():
+
+class ActivityDriver:
+    def __init__(self, session_factory=SessionLocal, llm_factory=LLMClient, run_in_background: bool = True):
+        self.session_factory = session_factory
+        self.llm_factory = llm_factory
+        self.run_in_background = run_in_background
+
+        self.current_activity_id: int | None = None
+        self.last_input_at: datetime | None = None
+        self.is_idle = False
+        self.app_switch_count = 0
+        self.pending_prediction_id: int | None = None
+        self.settings = AssistantSettings()
+        self._settings_loaded_at: datetime | None = None
+        self._end_of_day_busy = threading.Event()
+        self._end_of_day_done_for: date | None = None
+        self._end_of_day_retry_at: datetime | None = None
+
+    # ---- one poll -------------------------------------------------------------------------------
+
+    def tick(self, now: datetime, active_window: tuple[str, str] | None, keys: int, clicks: int) -> None:
+        db = self.session_factory()
+        try:
+            self._refresh_settings(db, now)
+            if self._is_paused(db):
+                self._close_current(db, now)
+                return
+
+            app_name = title = None
+            if active_window:
+                app_name, raw_title = active_window
+                title = title_for_storage(app_name, raw_title, self.settings.private_apps,
+                                          self.settings.private_title_words)
+
+            self._update_presence(db, now, keys > 0 or clicks > 0, app_name, title)
+            if active_window and not self.is_idle:
+                self._record_window(db, now, app_name, title, keys, clicks)
+            elif not active_window:
+                # Lock screen or screensaver: no window can be read
+                self._close_current(db, now)
+            self._check_end_of_day(now)
+        except Exception as e:
+            logger.exception("Driver tick failed")
+            print(f"[DRIVER ERROR] {e}")
+            db.rollback()
+        finally:
+            db.close()
+
+    # ---- presence ------------------------------------------------------------------------------
+
+    def _update_presence(self, db: Session, now: datetime, has_input: bool, app_name, title) -> None:
+        if self.last_input_at is None:
+            self.last_input_at = now  # starting the driver counts as being present
+
+        if has_input:
+            if self.is_idle:
+                away_seconds = (now - self.last_input_at).total_seconds()
+                self.is_idle = False
+                print(f"[DRIVER] User returned after {int(away_seconds)} s.")
+                if is_welcome_back(away_seconds, self.settings):
+                    message = welcome_back(db, self.last_input_at, away_seconds, self.settings)
+                    print(f"[ASSISTANT] {message.title} {message.body}")
+            self.last_input_at = now
+            return
+
+        idle_after = idle_threshold_seconds(app_name, title, self.settings)
+        if not self.is_idle and (now - self.last_input_at).total_seconds() >= idle_after:
+            self.is_idle = True
+            print(f"[DRIVER] User went idle (no input for {idle_after} s).")
+            # Screen time ends at the last input, so idle minutes are not counted as work
+            self._close_current(db, self.last_input_at)
+
+    # ---- activity records ----------------------------------------------------------------------
+
+    def _record_window(self, db: Session, now: datetime, app_name: str, title: str, keys: int, clicks: int) -> None:
+        current = db.get(AppActivity, self.current_activity_id) if self.current_activity_id else None
+
+        if current and current.app_name == app_name and current.window_title == title:
+            current.keystroke_count += keys
+            current.mouse_click_count += clicks
+            current.duration_seconds = self._seconds_since(current.start_time, now)
+            db.commit()
+            return
+
+        is_app_switch = bool(current and current.app_name != app_name)
+        self._close_current(db, now)
+        record = AppActivity(app_name=app_name, window_title=title, keystroke_count=keys,
+                             mouse_click_count=clicks, start_time=now)
+        db.add(record)
+        db.commit()
+        self.current_activity_id = record.id
+        print(f"[DRIVER] Active window: {app_name} | {title}")
+
+        if is_app_switch:
+            self._on_app_switch(db, app_name)
+
+    def _close_current(self, db: Session, end: datetime) -> None:
+        if not self.current_activity_id:
+            return
+        record = db.get(AppActivity, self.current_activity_id)
+        if record and not record.end_time:
+            end = max(end, as_utc(record.start_time))
+            record.end_time = end
+            record.duration_seconds = self._seconds_since(record.start_time, end)
+            db.commit()
+        self.current_activity_id = None
+
+    @staticmethod
+    def _seconds_since(start: datetime, now: datetime) -> int:
+        return int((now - as_utc(start)).total_seconds())
+
+    # ---- habits and predictions ----------------------------------------------------------------
+
+    def _on_app_switch(self, db: Session, app_name: str) -> None:
+        # 1. Feedback on the previous prediction
+        if self.pending_prediction_id:
+            pending = db.get(AIPrediction, self.pending_prediction_id)
+            if pending and pending.status == "suggested":
+                pending.status = "accepted" if pending.suggested_action == app_name else "ignored"
+                db.commit()
+            self.pending_prediction_id = None
+
+        # 2. Retrain every few switches
+        self.app_switch_count += 1
+        if self.app_switch_count % TRAIN_INTERVAL_SWITCHES == 0:
+            learned = MarkovPatternEngine.train_patterns(db)
+            print(f"[PATTERNS] Retrained: {len(learned)} habit(s).")
+
+        # 3. Predict the next app; pop-ups only if the user turned them on
+        prediction = MarkovPatternEngine.predict_next(app_name, db)
+        if not prediction:
+            return
+        popup_pref = db.query(UserPreference).filter(UserPreference.key == "desktop_notifications_enabled").first()
+        show_popup = popup_pref is not None and popup_pref.value == "true"
+        dispatched = notification_manager.dispatch_suggestion(
+            trigger_app=prediction["trigger_app"], predicted_app=prediction["predicted_app"],
+            confidence_percent=prediction["confidence_percent"], show_popup=show_popup)
+        if dispatched:
+            record = MarkovPatternEngine.record_prediction(prediction["trigger_app"], prediction["predicted_app"],
+                                                           "suggested", db)
+            self.pending_prediction_id = record.id
+            print(f"[PREDICTION] {app_name} -> {prediction['predicted_app']} ({prediction['confidence_percent']}%)")
+
+    # ---- end of day ----------------------------------------------------------------------------
+
+    def _check_end_of_day(self, now: datetime) -> None:
+        if self._end_of_day_busy.is_set() or (self._end_of_day_retry_at and now < self._end_of_day_retry_at):
+            return
+        now_local = now.astimezone(local_tz())
+        seconds_since_input = (now - self.last_input_at).total_seconds() if self.last_input_at else 0
+        done_today = self._end_of_day_done_for == now_local.date()
+        if not is_end_of_day_due(now_local, seconds_since_input, self.settings, already_sent_today=done_today):
+            return
+        self._end_of_day_busy.set()
+        if self.run_in_background:
+            # The model takes seconds: never block the 2-second tracking loop
+            threading.Thread(target=self._send_end_of_day, args=(now_local.date(), now), daemon=True).start()
+        else:
+            self._send_end_of_day(now_local.date(), now)
+
+    def _send_end_of_day(self, day, now: datetime) -> None:
+        db = self.session_factory()
+        try:
+            if not sent_on(db, "end_of_day", day):  # also covers a driver restart on the same day
+                message = end_of_day(db, self.llm_factory(), day)
+                print(f"[ASSISTANT] End of day: {message.title}")
+            self._end_of_day_done_for = day
+        except Exception:
+            logger.exception("End-of-day summary failed")
+            self._end_of_day_retry_at = now + END_OF_DAY_RETRY
+        finally:
+            db.close()
+            self._end_of_day_busy.clear()
+
+    # ---- settings and pause --------------------------------------------------------------------
+
+    def _refresh_settings(self, db: Session, now: datetime) -> None:
+        if self._settings_loaded_at and (now - self._settings_loaded_at).total_seconds() < SETTINGS_REFRESH_SECONDS:
+            return
+        self.settings = load_settings(db)
+        self._settings_loaded_at = now
+
+    @staticmethod
+    def _is_paused(db: Session) -> bool:
+        pref = db.query(UserPreference).filter(UserPreference.key == "is_tracking_paused").first()
+        return pref is not None and pref.value == "true"
+
+
+def run_driver() -> None:
+    # Imported here: the macOS trackers need Quartz/pynput, which tests and CI do not have
+    from backend.tracker import get_tracker
+    from backend.tracker.input_tracker import InputTracker
+
     print("Starting AI Cognitive OS Driver...")
-    print("Local database is connected.")
-    
-    # Train initial patterns from existing database history
+    init_db()
+    db = SessionLocal()
     try:
-        init_db = SessionLocal()
-        learned = MarkovPatternEngine.train_patterns(init_db)
-        if learned:
-            print(f"[PATTERNS] Initialized {len(learned)} habit pattern(s) from database history.")
-        init_db.close()
-    except Exception as e:
-        print(f"[PATTERNS INIT ERROR] {e}")
+        learned = MarkovPatternEngine.train_patterns(db)
+        print(f"[PATTERNS] Initialized {len(learned)} habit pattern(s) from history.")
+    finally:
+        db.close()
 
-    # Initialize trackers
     os_tracker = get_tracker()
     input_tracker = InputTracker()
     input_tracker.start()
-    print("Background input activity listeners started.")
-    
-    current_activity_id = None
-    idle_polls_count = 0
-    is_idle = False
-    app_switch_count = 0
-    pending_prediction_id = None
-    
+    driver = ActivityDriver()
+    print("Tracking started. Press Ctrl+C to stop.")
     try:
         while True:
-            # 1. Poll the OS for the active window
-            active_info = os_tracker.get_active_window()
-            
-            # 2. Read and reset input counts
+            active_window = os_tracker.get_active_window()
             keys, clicks = input_tracker.get_and_reset_counts()
-            
-            db: Session = SessionLocal()
-            now = datetime.now(timezone.utc)
-            
-            try:
-                # Check if user has paused tracking via API / Preference
-                pref = db.query(UserPreference).filter(UserPreference.key == "is_tracking_paused").first()
-                if pref and pref.value == "true":
-                    if current_activity_id:
-                        # Close active session
-                        active_record = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
-                        if active_record:
-                            active_record.end_time = now
-                            start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
-                            active_record.duration_seconds = int((now - start_dt).total_seconds())
-                            db.commit()
-                            current_activity_id = None
-                    time.sleep(POLL_INTERVAL)
-                    continue
-
-                # Presence detection: check if there was any activity in this tick
-                has_input = (keys > 0 or clicks > 0)
-                
-                if not has_input:
-                    idle_polls_count += 1
-                else:
-                    idle_polls_count = 0
-                    if is_idle:
-                        print("[RIVER] User returned from idle.")
-                        is_idle = False
-                
-                # Check if user crossed the idle threshold
-                if idle_polls_count >= IDLE_TIMEOUT_POLLS and not is_idle:
-                    print(f"[DRIVER] User went idle (no activity for {IDLE_TIMEOUT_POLLS * POLL_INTERVAL} seconds).")
-                    is_idle = True
-                    # Close the current active window session so we don't inflate screen time
-                    if current_activity_id:
-                        activity = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
-                        if activity and not activity.end_time:
-                            activity.end_time = now
-                            start_dt = activity.start_time.replace(tzinfo=timezone.utc) if activity.start_time.tzinfo is None else activity.start_time
-                            activity.duration_seconds = int((now - start_dt).total_seconds())
-                            db.commit()
-                            current_activity_id = None
-                
-                # If user is active and we have window metadata
-                if active_info and not is_idle:
-                    app_name, window_title = active_info
-                    
-                    # Fetch active record
-                    active_record = None
-                    if current_activity_id:
-                        active_record = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
-                    
-                    # Case A: No active record, or application/window title changed
-                    if not active_record or active_record.app_name != app_name or active_record.window_title != window_title:
-                        is_app_switch = bool(active_record and active_record.app_name != app_name)
-
-                        # Close the old record if it exists
-                        if active_record:
-                            active_record.end_time = now
-                            start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
-                            active_record.duration_seconds = int((now - start_dt).total_seconds())
-                            db.commit()
-                        
-                        # Open a new activity record
-                        new_record = AppActivity(
-                            app_name=app_name,
-                            window_title=window_title,
-                            keystroke_count=keys,
-                            mouse_click_count=clicks,
-                            start_time=now
-                        )
-                        db.add(new_record)
-                        db.commit()
-                        db.refresh(new_record)
-                        current_activity_id = new_record.id
-                        print(f"[DRIVER] Active Window: {app_name} | Title: {window_title} | Keys: {keys} | Clicks: {clicks}")
-
-                        # Trigger prediction & feedback loop on application switches
-                        if is_app_switch:
-                            # 1. Evaluate previous prediction feedback
-                            if pending_prediction_id:
-                                pending = db.query(AIPrediction).filter(AIPrediction.id == pending_prediction_id).first()
-                                if pending and pending.status == "suggested":
-                                    if pending.suggested_action == app_name:
-                                        pending.status = "accepted"
-                                        print(f"[FEEDBACK] Prediction accepted! User opened suggested app: {app_name}")
-                                    else:
-                                        pending.status = "ignored"
-                                    db.commit()
-                                pending_prediction_id = None
-
-                            # 2. Increment switch counter and periodically retrain patterns
-                            app_switch_count += 1
-                            if app_switch_count % TRAIN_INTERVAL_SWITCHES == 0:
-                                learned = MarkovPatternEngine.train_patterns(db)
-                                if learned:
-                                    print(f"[PATTERNS] Retrained Markov transitions: {len(learned)} active habit(s).")
-
-                            # 3. Query prediction for newly focused application
-                            prediction = MarkovPatternEngine.predict_next(app_name, db)
-                            if prediction:
-                                print(f"[PREDICTION] Evaluated '{app_name}' ➔ Top candidate: '{prediction['predicted_app']}' ({prediction['confidence_percent']}% confidence)")
-                                # Desktop pop-ups are off unless the user turns them on (they interrupt more than they help)
-                                popup_pref = db.query(UserPreference).filter(UserPreference.key == "desktop_notifications_enabled").first()
-                                show_popup = popup_pref is not None and popup_pref.value == "true"
-                                dispatched = notification_manager.dispatch_suggestion(
-                                    trigger_app=prediction["trigger_app"],
-                                    predicted_app=prediction["predicted_app"],
-                                    confidence_percent=prediction["confidence_percent"],
-                                    show_popup=show_popup
-                                )
-                                if dispatched:
-                                    pred_record = MarkovPatternEngine.record_prediction(
-                                        trigger=prediction["trigger_app"],
-                                        predicted=prediction["predicted_app"],
-                                        status="suggested",
-                                        db=db
-                                    )
-                                    pending_prediction_id = pred_record.id
-                                    if show_popup:
-                                        print(f"[NOTIFICATION] 🔔 macOS desktop notification dispatched for '{prediction['predicted_app']}'!")
-                                    else:
-                                        print(f"[SUGGESTION] Recorded quietly for the dashboard (desktop pop-ups are off).")
-                                else:
-                                    print(f"[NOTIFICATION] Suppressed by anti-spam cooldown (must wait 45s between desktop alerts).")
-                            else:
-                                print(f"[PREDICTION] No habit pattern found for '{app_name}' with >= 50% confidence.")
-                    
-                    # Case B: Still in the same window, accumulate data
-                    else:
-                        active_record.keystroke_count += keys
-                        active_record.mouse_click_count += clicks
-                        if keys > 0 or clicks > 0:
-                            # what are we printing the keys are we storing them all here ..?
-                            print(f"[DRIVER] Activity in {app_name} | +{keys} keys | +{clicks} clicks (Total: {active_record.keystroke_count} keys, {active_record.mouse_click_count} clicks)")
-                        start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
-                        active_record.duration_seconds = int((now - start_dt).total_seconds())
-                        db.commit()
-                
-                # If window detection fails (e.g., lock screen, screensaver), close the current active record
-                elif not active_info and current_activity_id:
-                    active_record = db.query(AppActivity).filter(AppActivity.id == current_activity_id).first()
-                    if active_record:
-                        active_record.end_time = now
-                        start_dt = active_record.start_time.replace(tzinfo=timezone.utc) if active_record.start_time.tzinfo is None else active_record.start_time
-                        active_record.duration_seconds = int((now - start_dt).total_seconds())
-                        db.commit()
-                        current_activity_id = None
-            
-            except Exception as e:
-                print(f"[DRIVER ERROR] {e}")
-                db.rollback()
-            finally:
-                db.close()
-                
+            driver.tick(datetime.now(timezone.utc), active_window, keys, clicks)
             time.sleep(POLL_INTERVAL)
-            
     except KeyboardInterrupt:
         print("\nStopping background driver...")
     finally:
         input_tracker.stop()
-        print("Listeners stopped. driver shut down.")
+        print("Listeners stopped. Driver shut down.")
+
 
 if __name__ == "__main__":
     run_driver()

@@ -14,3 +14,6 @@ __pycache__/
 
 # AI tool files (local only)
 .agents/
+
+# Local evaluation samples (contain real window titles)
+*.local.md

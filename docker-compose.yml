@@ -1,0 +1,41 @@
+# PostgreSQL (with pgvector) + the API in containers. Ollama and the tracker run on the Mac itself.
+#   docker compose up --build
+#   API: http://localhost:8000/docs   Database: localhost:5433
+# The tracker writes to this database when started with DB_PORT=5433:
+#   DB_PORT=5433 DB_USER=cognitive DB_PASSWORD=cognitive venv/bin/python -m backend.driver
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: cognitive
+      POSTGRES_PASSWORD: cognitive
+      POSTGRES_DB: cognitive_os
+    ports:
+      - "5433:5432"   # 5433 on the Mac, so it does not clash with a local PostgreSQL on 5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognitive -d cognitive_os"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: cognitive
+      DB_PASSWORD: cognitive
+      DB_NAME: cognitive_os
+      OLLAMA_URL: http://host.docker.internal:11434   # Ollama running on the Mac
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+
+volumes:
+  db-data:

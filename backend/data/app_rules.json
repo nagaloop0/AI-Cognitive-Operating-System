@@ -1,0 +1,14 @@
+{
+  "_comment": "Rules that recognise apps and window titles. Edit this file (or point APP_RULES_FILE in .env to your own copy) to add apps; no code change is needed. Names are matched without regard to case.",
+  "app_categories": {
+    "communication": ["Slack", "Mail", "Microsoft Outlook", "Microsoft Teams", "zoom.us", "FaceTime", "Messages",
+                      "WhatsApp", "Telegram", "Signal", "Discord"],
+    "work": ["Code", "Visual Studio Code", "Cursor", "Xcode", "Terminal", "iTerm2", "PyCharm", "IntelliJ IDEA",
+             "WebStorm", "Postman", "Microsoft Word", "Microsoft Excel", "Pages", "Numbers", "Keynote"],
+    "fun": ["Spotify", "Music", "TV", "Netflix", "Steam", "Photo Booth"]
+  },
+  "meeting_apps": ["zoom.us", "Microsoft Teams", "FaceTime", "Webex", "Skype"],
+  "meeting_title_words": ["google meet", "meet -", "zoom meeting", "teams meeting"],
+  "media_apps": ["QuickTime Player", "VLC", "IINA", "TV", "Netflix", "Music", "Spotify"],
+  "video_title_words": ["youtube", "netflix", "prime video", "disney+", "vimeo", "twitch"]
+}

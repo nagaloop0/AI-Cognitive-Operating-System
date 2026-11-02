@@ -1,12 +1,24 @@
-fastapi
-uvicorn
-sqlalchemy
-pydantic
-pynput
-pytest
-pyobjc-core; sys_platform == 'darwin'
-pyobjc-framework-Cocoa; sys_platform == 'darwin'
-pyobjc-framework-Quartz; sys_platform == 'darwin'
-psycopg2-binary
-python-dotenv
-httpx
+# Exact versions: every install (Mac, Docker, CI) gets the same packages.
+# Update on purpose: venv/bin/python -m pip install -U <package>, run the tests, then change the version here.
+
+# API and data
+fastapi==0.162.0
+uvicorn==0.54.0
+sqlalchemy==2.1.6
+pydantic==2.14.2
+psycopg2-binary==2.9.13
+pgvector==0.5.1
+numpy==2.5.4
+python-dotenv==1.2.4
+
+# Local AI (Ollama over HTTP)
+httpx==0.28.1
+
+# Tests
+pytest==9.2.0
+
+# macOS tracker only (window titles via Quartz, input counts via pynput)
+pynput==1.8.2; sys_platform == 'darwin'
+pyobjc-core==13.0; sys_platform == 'darwin'
+pyobjc-framework-Cocoa==13.0; sys_platform == 'darwin'
+pyobjc-framework-Quartz==13.0; sys_platform == 'darwin'

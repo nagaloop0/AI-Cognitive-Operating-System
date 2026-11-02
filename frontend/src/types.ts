@@ -60,3 +60,50 @@ export interface DashboardData {
   recent_predictions?: PredictionItem[];
 }
 
+
+// ---- Phase 2: AI summary, categories and assistant messages ----
+
+export interface TimeSplit {
+  app_name: string;
+  minutes: number;
+}
+
+export interface DailySummary {
+  day: string;
+  headline: string;
+  focus_areas: string[];
+  insight: string;
+  suggestion: string;
+  time_split: TimeSplit[];
+  active_minutes: number;
+  category_minutes: Record<string, number>;
+  source: 'llm' | 'fallback';
+  model: string | null;
+  attempts: number;
+  is_partial: boolean;
+  generated_at: string;
+  notice: string | null;
+}
+
+export interface AssistantMessage {
+  id: number;
+  created_at: string;
+  kind: 'welcome_back' | 'end_of_day' | 'nudge' | 'unread';
+  title: string;
+  body: string;
+  is_read: boolean;
+}
+
+export interface AskSource {
+  day: string;
+  app_name: string;
+  window_title: string;
+  seconds: number;
+}
+
+export interface AskAnswer {
+  question: string;
+  answer: string;
+  days: string[];
+  sources: AskSource[];
+}
