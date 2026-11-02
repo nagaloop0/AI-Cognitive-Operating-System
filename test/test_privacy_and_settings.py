@@ -97,3 +97,13 @@ def test_email_pattern_masks_retina_file_names_too():
 def test_long_numbers_are_masked_but_years_and_times_are_not():
     assert redact("IBAN DE89 3704 0044 0532 0130 00") == "IBAN DE89 [number]"
     assert redact("Report 2026 - 10:45") == "Report 2026 - 10:45"
+
+
+def test_integration_guard_refuses_a_database_not_ending_in_test():
+    from _pytest.outcomes import Failed
+
+    from conftest import checked_test_database_url
+
+    with pytest.raises(Failed, match="must end in _test"):
+        checked_test_database_url("postgresql+psycopg2://me@localhost/cognitive_os")
+    assert checked_test_database_url("postgresql+psycopg2://me@localhost/cognitive_os_test").endswith("_test")

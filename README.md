@@ -101,8 +101,19 @@ With Docker (PostgreSQL + API in containers; Ollama and the tracker stay on the 
 venv/bin/python -m pytest -q
 ```
 
-All tests use an in-memory SQLite database and a fake language model: no PostgreSQL, no Ollama, no notifications.
-GitHub Actions runs them, plus the frontend type check and build, on every push.
+The default tests use an in-memory SQLite database and a fake language model: no PostgreSQL, no Ollama, no
+notifications. Integration tests for the real pgvector queries are marked `postgres` and skip unless a test database
+is given (its name must end in `_test`; the real database is never used):
+
+```bash
+createdb cognitive_os_test
+TEST_DATABASE_URL=postgresql+psycopg2://$USER@localhost/cognitive_os_test venv/bin/python -m pytest -m postgres
+cd frontend && npm test                    # Vitest component tests
+bash scripts/docker_smoke_test.sh          # build, start and check the Docker stack (API_PORT=8001 if 8000 is busy)
+```
+
+GitHub Actions runs 4 jobs on every push: backend tests, Postgres + pgvector integration tests (in a service
+container; a skipped integration test fails the job), Docker build and smoke test, and frontend tests + build.
 
 ## Evaluation
 
