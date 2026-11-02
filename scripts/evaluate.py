@@ -7,7 +7,9 @@ Evaluation of the AI features on this Mac (needs Ollama running and the models p
 3. Daily summaries: on your most recent real days, per model: time, valid-JSON attempts, and grounding
    (share of focus areas that use words from the day's window titles).
 4. Cached summary: median time to return an already generated summary (database read, no model call).
-   This step stores one summary in the real `daily_summary` table, as the app itself does.
+
+The real database is never changed: every step uses rollback_session(), so anything written while measuring
+(a cached summary, new category labels) is rolled back at the end.
 
 Results (numbers only) -> docs/evaluation.md, safe to commit.
 Summary texts for rating by hand -> docs/evaluation_samples.local.md (git-ignored: contains your titles).
@@ -27,7 +29,7 @@ import numpy as np
 from sqlalchemy import func
 
 from backend.categories import BATCH_SIZE, classify_titles
-from backend.database import SessionLocal
+from backend.database import rollback_session
 from backend.digest import build_day_digest
 from backend.llm_client import LLMClient
 from backend.models import AppActivity
@@ -93,9 +95,8 @@ def grounding(focus_areas: list[str], digest_text: str) -> float:
 
 
 def evaluate_summaries(models: list[str], days_limit: int) -> tuple[list[dict], list[str]]:
-    db = SessionLocal()
     rows, samples = [], []
-    try:
+    with rollback_session() as db:
         private_apps = load_settings(db).private_apps
         for day in recent_days(db, days_limit):
             digest = build_day_digest(db, day, private_apps)
@@ -111,15 +112,12 @@ def evaluate_summaries(models: list[str], days_limit: int) -> tuple[list[dict], 
                 samples.append(f"### {day} · {model} · {seconds:.1f} s\n\n**{result.headline}**\n\n"
                                f"- Focus: {', '.join(result.focus_areas)}\n- Insight: {result.insight}\n"
                                f"- Suggestion: {result.suggestion}\n\nYour rating (1-5) accuracy: _ usefulness: _\n")
-    finally:
-        db.close()
     return rows, samples
 
 
 def evaluate_cache(reads: int = 20) -> dict | None:
     """Median time of `reads` cache hits for the most recent finished day with an AI summary."""
-    db = SessionLocal()
-    try:
+    with rollback_session() as db:
         llm = LLMClient()
         for day in recent_days(db, 10):
             if day >= local_today():
@@ -133,8 +131,6 @@ def evaluate_cache(reads: int = 20) -> dict | None:
                 timings.append(time.perf_counter() - start)
             return {"day": day.isoformat(), "reads": reads, "median_ms": statistics.median(timings) * 1000,
                     "max_ms": max(timings) * 1000}
-    finally:
-        db.close()
     return None
 
 

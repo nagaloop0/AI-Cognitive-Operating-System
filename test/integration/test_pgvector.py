@@ -106,3 +106,28 @@ def test_real_database_cannot_be_used_during_integration_tests(pg_db):
         database.SessionLocal()
     with pytest.raises(AssertionError, match="must not use backend.database.engine"):
         init_db()  # no argument = the default engine
+
+
+def test_rollback_session_leaves_the_database_unchanged(pg_db, pg_engine):
+    # Same steps as scripts/evaluate.py step 4: generate and cache a summary (which also labels titles), read it back
+    from backend.database import rollback_session
+    from backend.models import AppActivity, DailySummary, TitleCategory
+    from backend.summary import get_daily_summary
+
+    start, _ = local_day_bounds(YESTERDAY)
+    add_activity(pg_db, "Code", "digest.py", start + timedelta(hours=9), 60)
+    add_activity(pg_db, "Google Chrome", "pgvector docs", start + timedelta(hours=10), 30)
+    answer = {"headline": "Digest work", "focus_areas": ["digest.py"], "insight": "Good focus.", "suggestion": "Repeat."}
+    llm = FakeLLM({"labels": [{"index": 0, "category": "learning"}]}, answer)
+
+    with rollback_session(pg_engine) as session:
+        assert get_daily_summary(session, YESTERDAY, llm).source == "llm"
+        for _ in range(3):
+            get_daily_summary(session, YESTERDAY, llm)  # cache hits inside the evaluation
+        assert session.query(DailySummary).count() == 1
+        assert session.query(TitleCategory).count() == 2
+
+    pg_db.expire_all()
+    assert pg_db.query(DailySummary).count() == 0
+    assert pg_db.query(TitleCategory).count() == 0
+    assert pg_db.query(AppActivity).count() == 2  # data written before the evaluation is untouched

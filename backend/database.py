@@ -1,7 +1,8 @@
 import os
+from contextlib import contextmanager
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # Load variables from .env file
 load_dotenv()
@@ -31,6 +32,20 @@ def init_db(bind=None):
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     from backend import models  # noqa: F401  (registers every table on Base before create_all)
     Base.metadata.create_all(bind=bind)
+
+@contextmanager
+def rollback_session(bind=None):
+    """A session whose writes never last: every commit() inside becomes a savepoint, and the whole outer
+    transaction is rolled back at the end. For evaluations and checks that read the real database."""
+    connection = (bind or engine).connect()
+    outer = connection.begin()
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
+    try:
+        yield session
+    finally:
+        session.close()
+        outer.rollback()
+        connection.close()
 
 def get_db():
     db = SessionLocal()
